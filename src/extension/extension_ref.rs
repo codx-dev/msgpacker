@@ -4,7 +4,11 @@ use crate::buffer;
 use std::slice;
 use std::time::Duration;
 
-/// Custom extension definition
+/// Custom extension definition as reference to a bytes source.
+///
+/// This data structure doesn't provide mutable access because it wouldn't reflect the expected
+/// usage. However, the slices are exposed and you can do whatever you like with them - even
+/// unsafely convert to mutable access.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExtensionRef<'a> {
     /// 1 byte custom extension
@@ -35,6 +39,27 @@ impl<'a> ExtensionRef<'a> {
             Self::Ext(t, _) => *t,
             Self::Timestamp(_) => Extension::TIMESTAMP_TYPE,
         }
+    }
+
+    /// Create a new extension from the provided slice.
+    ///
+    /// The length of the slice will be evaluated to better fit the available extension variants
+    pub const fn extension(class: i8, data: &'a [u8]) -> Self {
+        match data.len() {
+            1 => Self::FixExt1(class, data[0]),
+            2 => Self::FixExt2(class, data),
+            4 => Self::FixExt4(class, data),
+            8 => Self::FixExt8(class, data),
+            16 => Self::FixExt16(class, data),
+            _ => Self::Ext(class, data),
+        }
+    }
+
+    /// Create a new timestamp variant of extension.
+    ///
+    /// Timestamp is an extension reserved by the protocol.
+    pub const fn extension_timestamp(duration: Duration) -> Self {
+        Self::Timestamp(duration)
     }
 
     /// Underlying data of the extension

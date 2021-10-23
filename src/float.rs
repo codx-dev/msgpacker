@@ -28,6 +28,16 @@ impl Float {
     as_float!(as_f32, f32, F32);
     as_float!(as_f64, f64, F64);
 
+    /// Create a new 32-bits floating point
+    pub fn f32<F: Into<f32>>(f: F) -> Self {
+        Self::F32(f.into())
+    }
+
+    /// Create a new 64-bits floating point
+    pub fn f64<F: Into<f64>>(f: F) -> Self {
+        Self::F64(f.into())
+    }
+
     /// Pack this float into writer and return the amount of bytes written
     pub fn pack<W>(&self, mut writer: W) -> io::Result<usize>
     where

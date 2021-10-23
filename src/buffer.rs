@@ -54,3 +54,8 @@ where
 {
     writer.write(buf)
 }
+
+/// Cheap trick to cast fixed sized arrays, when the user is sure the size fits
+pub const unsafe fn cast_fixed_array<const M: usize, const N: usize>(array: [u8; M]) -> [u8; N] {
+    *mem::transmute::<&[u8; M], &[u8; N]>(&array)
+}

@@ -1,4 +1,4 @@
-# MessagePacker - a Rust of the msgpack protocol
+# MessagePacker - some Rust in the msgpack protocol
 
 [![crates.io](https://img.shields.io/crates/v/msgpacker?label=latest)](https://crates.io/crates/msgpacker)
 [![Documentation](https://docs.rs/msgpacker/badge.svg)](https://docs.rs/msgpacker/)
@@ -19,12 +19,13 @@ We have two main structures available:
 use msgpacker::prelude::*;
 use std::io::{Cursor, Seek};
 
-let mut cursor = Cursor::new(vec![0u8; 4096]);
+let buffer = vec![0u8; 4096];
+let mut cursor = Cursor::new(buffer);
 
-let key = Message::String("some-key".into());
-let value = Message::Integer(Integer::signed(-15));
+let key = Message::string("some-key");
+let value = Message::integer_signed(-15);
 let entry = MapEntry::new(key, value);
-let message = Message::Map(vec![entry]);
+let message = Message::map(vec![entry]);
 
 // Write the message to the cursor
 message.pack(&mut cursor).expect("Message pack failed");
@@ -43,6 +44,15 @@ let value = restored
     .expect("The value was an integer")
     .as_i64()
     .expect("The value was a negative integer");
+
+assert_eq!(value, -15);
+
+// Alternatively, we can use the index implementation
+let value = restored["some-key"]
+    .as_integer()
+    .expect("The value was an integer")
+    .as_i64()
+    .expect("The value was a negative number");
 
 assert_eq!(value, -15);
 ```
@@ -87,6 +97,15 @@ let value = restored
     .expect("The value was an integer")
     .as_i64()
     .expect("The value was a negative integer");
+
+assert_eq!(value, -15);
+
+// MessageRef also implements `Index`
+let value = restored["some-key"]
+    .as_integer()
+    .expect("The value was an integer")
+    .as_i64()
+    .expect("The value was a negative number");
 
 assert_eq!(value, -15);
 ```

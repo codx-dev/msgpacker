@@ -7,6 +7,7 @@ use crate::map::MapEntry;
 use crate::message_ref::MessageRef;
 
 use std::io;
+use std::ops::Index;
 use std::time::Duration;
 
 macro_rules! unpack_number {
@@ -108,6 +109,77 @@ impl Message {
     as_value_ref!(as_array, [Message], Array);
     as_value_ref!(as_map, [MapEntry], Map);
     as_value_ref!(as_extension, Extension, Extension);
+
+    /// Create a new unsigned interger
+    pub fn integer_unsigned<T>(n: T) -> Self
+    where
+        T: Into<u64>,
+    {
+        Self::Integer(Integer::unsigned(n))
+    }
+
+    /// Create a new signed interger
+    pub fn integer_signed<T>(n: T) -> Self
+    where
+        T: Into<i64>,
+    {
+        Self::Integer(Integer::signed(n))
+    }
+
+    /// Create a new 32-bits floating point
+    pub fn float32<F: Into<f32>>(f: F) -> Self {
+        Self::Float(Float::f32(f))
+    }
+
+    /// Create a new 64-bits floating point
+    pub fn float64<F: Into<f64>>(f: F) -> Self {
+        Self::Float(Float::f64(f))
+    }
+
+    /// Create a new boolean
+    pub fn boolean<B: Into<bool>>(b: B) -> Self {
+        Self::Boolean(b.into())
+    }
+
+    /// Create a null representation
+    pub const fn nil() -> Self {
+        Self::Nil
+    }
+
+    /// Create a string representation
+    pub fn string<S: ToString>(s: S) -> Self {
+        Self::String(s.to_string())
+    }
+
+    /// Create a binary representation
+    pub fn bin<B: Into<Vec<u8>>>(b: B) -> Self {
+        Self::Bin(b.into())
+    }
+
+    /// Create a array representation
+    pub fn array<A: Into<Vec<Self>>>(a: A) -> Self {
+        Self::Array(a.into())
+    }
+
+    /// Create a map representation
+    pub fn map<M: Into<Vec<MapEntry>>>(m: M) -> Self {
+        Self::Map(m.into())
+    }
+
+    /// Create a new extension of fixed size
+    pub fn extension_fixed<const N: usize>(class: i8, data: [u8; N]) -> Option<Self> {
+        Extension::extension_fixed(class, data).map(Self::from)
+    }
+
+    /// Create a new extension of variable size
+    pub fn extension_variable(class: i8, data: Vec<u8>) -> Self {
+        Extension::extension_variable(class, data).into()
+    }
+
+    /// Create a new timestamp extension
+    pub fn extension_timestamp(duration: Duration) -> Self {
+        Extension::extension_timestamp(duration).into()
+    }
 
     /// Consume the bytes required to read a new message.
     ///
@@ -403,7 +475,7 @@ impl Message {
     /// region
     ///
     /// Need to take `W` as reference until recursion resolution bug is solved:
-    /// [specs](https://github.com/rust-lang/rust/issues/39959)
+    /// [39959](https://github.com/rust-lang/rust/issues/39959)
     pub fn pack<W>(&self, writer: &mut W) -> io::Result<usize>
     where
         W: io::Write,
@@ -680,5 +752,153 @@ impl Message {
         }
 
         Ok(n)
+    }
+}
+
+impl From<Integer> for Message {
+    fn from(i: Integer) -> Self {
+        Self::Integer(i)
+    }
+}
+
+impl From<u8> for Message {
+    fn from(i: u8) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl From<u16> for Message {
+    fn from(i: u16) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl From<u32> for Message {
+    fn from(i: u32) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl From<u64> for Message {
+    fn from(i: u64) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl From<i8> for Message {
+    fn from(i: i8) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl From<i16> for Message {
+    fn from(i: i16) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl From<i32> for Message {
+    fn from(i: i32) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl From<i64> for Message {
+    fn from(i: i64) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl From<bool> for Message {
+    fn from(b: bool) -> Self {
+        Self::Boolean(b)
+    }
+}
+
+impl From<Float> for Message {
+    fn from(f: Float) -> Self {
+        Self::Float(f)
+    }
+}
+
+impl From<f32> for Message {
+    fn from(f: f32) -> Self {
+        Self::Float(Float::f32(f))
+    }
+}
+
+impl From<f64> for Message {
+    fn from(f: f64) -> Self {
+        Self::Float(Float::f64(f))
+    }
+}
+
+impl From<&str> for Message {
+    fn from(s: &str) -> Self {
+        Self::String(s.to_owned())
+    }
+}
+
+impl From<String> for Message {
+    fn from(s: String) -> Self {
+        Self::String(s)
+    }
+}
+
+impl From<Vec<u8>> for Message {
+    fn from(b: Vec<u8>) -> Self {
+        Self::Bin(b)
+    }
+}
+
+impl FromIterator<u8> for Message {
+    fn from_iter<I: IntoIterator<Item = u8>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<u8>>().into()
+    }
+}
+
+impl From<Vec<Message>> for Message {
+    fn from(a: Vec<Message>) -> Self {
+        Self::Array(a)
+    }
+}
+
+impl FromIterator<Message> for Message {
+    fn from_iter<I: IntoIterator<Item = Message>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<Message>>().into()
+    }
+}
+
+impl From<Vec<MapEntry>> for Message {
+    fn from(m: Vec<MapEntry>) -> Self {
+        Self::Map(m)
+    }
+}
+
+impl FromIterator<MapEntry> for Message {
+    fn from_iter<I: IntoIterator<Item = MapEntry>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<MapEntry>>().into()
+    }
+}
+
+impl From<Extension> for Message {
+    fn from(e: Extension) -> Self {
+        Self::Extension(e)
+    }
+}
+
+impl<M: Into<Message>> Index<M> for Message {
+    type Output = Message;
+
+    fn index(&self, i: M) -> &Self::Output {
+        let i = i.into();
+
+        self.as_map()
+            .map(|m| {
+                m.iter()
+                    .find_map(|m| if m.key() == &i { Some(m.val()) } else { None })
+            })
+            .flatten()
+            .unwrap_or(&Message::Nil)
     }
 }

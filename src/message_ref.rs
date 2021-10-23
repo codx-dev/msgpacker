@@ -5,8 +5,9 @@ use crate::integer::Integer;
 use crate::map::MapEntryRef;
 use crate::{buffer, Message};
 
-use std::io;
+use std::ops::Index;
 use std::time::Duration;
+use std::{io, mem};
 
 macro_rules! as_value_deref {
     ($f:ident,$r:ty,$v:ident) => {
@@ -23,7 +24,7 @@ macro_rules! as_value_deref {
 macro_rules! as_value_ref {
     ($f:ident,$r:ty,$v:ident) => {
         /// Return the attribute, if matched
-        pub fn $f(&self) -> Option<&$r> {
+        pub fn $f(&self) -> Option<$r> {
             match self {
                 Self::$v(x) => Some(x),
                 _ => None,
@@ -94,11 +95,47 @@ impl<'a> MessageRef<'a> {
     as_value_deref!(as_integer, Integer, Integer);
     as_value_deref!(as_boolean, bool, Boolean);
     as_value_deref!(as_float, Float, Float);
-    as_value_ref!(as_string, str, String);
-    as_value_ref!(as_bin, [u8], Bin);
-    as_value_ref!(as_array, [MessageRef], Array);
-    as_value_ref!(as_map, [MapEntryRef], Map);
-    as_value_ref!(as_extension, ExtensionRef, Extension);
+    as_value_ref!(as_string, &'a str, String);
+    as_value_ref!(as_bin, &'a [u8], Bin);
+    as_value_ref!(as_array, &'a [MessageRef], Array);
+    as_value_ref!(as_map, &'a [MapEntryRef], Map);
+    as_value_ref!(as_extension, &'a ExtensionRef, Extension);
+
+    /// Create a new unsigned interger
+    pub fn integer_unsigned<T>(n: T) -> Self
+    where
+        T: Into<u64>,
+    {
+        Self::Integer(Integer::unsigned(n))
+    }
+
+    /// Create a new signed interger
+    pub fn integer_signed<T>(n: T) -> Self
+    where
+        T: Into<i64>,
+    {
+        Self::Integer(Integer::signed(n))
+    }
+
+    /// Create a new 32-bits floating point
+    pub fn float32<F: Into<f32>>(f: F) -> Self {
+        Self::Float(Float::f32(f))
+    }
+
+    /// Create a new 64-bits floating point
+    pub fn float64<F: Into<f64>>(f: F) -> Self {
+        Self::Float(Float::f64(f))
+    }
+
+    /// Create a new boolean
+    pub fn boolean<B: Into<bool>>(b: B) -> Self {
+        Self::Boolean(b.into())
+    }
+
+    /// Create a null representation
+    pub const fn nil() -> Self {
+        Self::Nil
+    }
 
     /// Consume the bytes required to read a new message reference.
     ///
@@ -719,5 +756,144 @@ impl<'a> MessageRef<'a> {
         }
 
         Ok(n)
+    }
+}
+
+impl<'a> From<Integer> for MessageRef<'a> {
+    fn from(i: Integer) -> Self {
+        Self::Integer(i)
+    }
+}
+
+impl<'a> From<u8> for MessageRef<'a> {
+    fn from(i: u8) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl<'a> From<u16> for MessageRef<'a> {
+    fn from(i: u16) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl<'a> From<u32> for MessageRef<'a> {
+    fn from(i: u32) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl<'a> From<u64> for MessageRef<'a> {
+    fn from(i: u64) -> Self {
+        Self::Integer(Integer::unsigned(i))
+    }
+}
+
+impl<'a> From<i8> for MessageRef<'a> {
+    fn from(i: i8) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl<'a> From<i16> for MessageRef<'a> {
+    fn from(i: i16) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl<'a> From<i32> for MessageRef<'a> {
+    fn from(i: i32) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl<'a> From<i64> for MessageRef<'a> {
+    fn from(i: i64) -> Self {
+        Self::Integer(Integer::signed(i))
+    }
+}
+
+impl<'a> From<bool> for MessageRef<'a> {
+    fn from(b: bool) -> Self {
+        Self::Boolean(b)
+    }
+}
+
+impl<'a> From<Float> for MessageRef<'a> {
+    fn from(f: Float) -> Self {
+        Self::Float(f)
+    }
+}
+
+impl<'a> From<f32> for MessageRef<'a> {
+    fn from(f: f32) -> Self {
+        Self::Float(Float::f32(f))
+    }
+}
+
+impl<'a> From<f64> for MessageRef<'a> {
+    fn from(f: f64) -> Self {
+        Self::Float(Float::f64(f))
+    }
+}
+
+impl<'a> From<&'a str> for MessageRef<'a> {
+    fn from(s: &'a str) -> Self {
+        Self::String(s)
+    }
+}
+
+impl<'a> From<&'a [u8]> for MessageRef<'a> {
+    fn from(b: &'a [u8]) -> Self {
+        Self::Bin(b)
+    }
+}
+
+impl<'a> From<Vec<MessageRef<'a>>> for MessageRef<'a> {
+    fn from(a: Vec<MessageRef<'a>>) -> Self {
+        Self::Array(a)
+    }
+}
+
+impl<'a> FromIterator<MessageRef<'a>> for MessageRef<'a> {
+    fn from_iter<I: IntoIterator<Item = MessageRef<'a>>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<MessageRef<'a>>>().into()
+    }
+}
+
+impl<'a> From<Vec<MapEntryRef<'a>>> for MessageRef<'a> {
+    fn from(m: Vec<MapEntryRef<'a>>) -> Self {
+        Self::Map(m)
+    }
+}
+
+impl<'a> FromIterator<MapEntryRef<'a>> for MessageRef<'a> {
+    fn from_iter<I: IntoIterator<Item = MapEntryRef<'a>>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<MapEntryRef<'a>>>().into()
+    }
+}
+
+impl<'a> From<ExtensionRef<'a>> for MessageRef<'a> {
+    fn from(e: ExtensionRef<'a>) -> Self {
+        Self::Extension(e)
+    }
+}
+
+impl<'a, 'b, M: Into<MessageRef<'b>>> Index<M> for MessageRef<'a> {
+    type Output = MessageRef<'a>;
+
+    fn index(&self, i: M) -> &Self::Output {
+        let i = i.into();
+
+        let m = self.as_map();
+        // Safety: self is bound to 'a
+        let m: Option<&'a [MapEntryRef<'a>]> = unsafe { mem::transmute(m) };
+
+        m.map(|m| {
+            m.iter()
+                .find_map(|m| if m.key() == &i { Some(m.val()) } else { None })
+        })
+        .flatten()
+        .unwrap_or(&MessageRef::Nil)
     }
 }
