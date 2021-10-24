@@ -1,0 +1,45 @@
+name: Test nightly
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
+
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+
+    - name: Check formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --verbose -- --check
+
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose
+
+    - name: Docs
+      uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --no-deps

@@ -75,7 +75,7 @@ message.pack(&mut cursor).expect("Message pack failed");
 
 cursor.rewind().expect("Reset the cursor to the beginning");
 
-// The consumer need to guarantee himself the cursor source will live long enough to satify the
+// The consumer need to guarantee himself the cursor source will live long enough to satisfy the
 // lifetime of the message reference.
 //
 // If this is guaranteed, then the function is safe.
@@ -108,4 +108,21 @@ let value = restored["some-key"]
     .expect("The value was a negative number");
 
 assert_eq!(value, -15);
+```
+
+## Benchmarks
+
+Results obtained with `Intel(R) Core(TM) i9-9900X CPU @ 3.50GHz`
+
+```ignore,no_run
+$ cargo bench
+msgpack nil             time:   [3.3648 ns 3.3783 ns 3.3928 ns]
+msgunpack nil           time:   [25.925 ns 26.008 ns 26.097 ns]
+msgunpack ref nil       time:   [22.632 ns 22.709 ns 22.789 ns]
+msgpack int             time:   [5.9986 ns 6.0216 ns 6.0525 ns]
+msgunpack int           time:   [25.481 ns 25.579 ns 25.680 ns]
+msgunpack ref int       time:   [22.635 ns 22.727 ns 22.830 ns]
+msgpack map             time:   [1.1588 us 1.1626 us 1.1667 us]
+msgunpack map           time:   [25.955 ns 26.045 ns 26.141 ns]
+msgunpack ref map       time:   [22.626 ns 22.716 ns 22.810 ns]
 ```
