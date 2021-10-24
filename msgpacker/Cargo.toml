@@ -1,0 +1,13 @@
+[package]
+name = "msgpacker"
+version = "0.1.7"
+authors = ["Victor Lopez <victor@codx.io>"]
+categories = ["compression", "encoding", "parser-implementations"]
+edition = "2021"
+keywords = ["messagepack", "msgpack"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/codx-dev/msgpacker"
+description = "MessagePack protocol implementation for Rust."
+
+[dependencies]
