@@ -101,6 +101,14 @@ impl<'a> MessageRef<'a> {
     as_value_ref!(as_map, &'a [MapEntryRef], Map);
     as_value_ref!(as_extension, &'a ExtensionRef, Extension);
 
+    /// Return `true` if the message is nil
+    pub const fn is_nil(&self) -> bool {
+        match self {
+            Self::Nil => true,
+            _ => false,
+        }
+    }
+
     /// Create a new unsigned interger
     pub fn integer_unsigned<T>(n: T) -> Self
     where
