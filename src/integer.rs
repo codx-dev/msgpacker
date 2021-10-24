@@ -36,6 +36,22 @@ impl Integer {
         Self::Int64(n.into())
     }
 
+    /// Return either a raw i64 or a cast u64
+    pub const fn as_signed(&self) -> i64 {
+        match self {
+            Self::Uint64(i) => *i as i64,
+            Self::Int64(i) => *i,
+        }
+    }
+
+    /// Return either a raw u64 or a cast i64
+    pub const fn as_unsigned(&self) -> u64 {
+        match self {
+            Self::Uint64(i) => *i,
+            Self::Int64(i) => *i as u64,
+        }
+    }
+
     /// Return the underlying u64, if the number if unsigned
     pub const fn as_u64(&self) -> Option<u64> {
         match self {
