@@ -112,26 +112,16 @@ assert_eq!(value, -15);
 
 ## Benchmarks
 
-Results obtained with `Intel(R) Core(TM) i9-9900X CPU @ 3.50GHz`
+Results obtained with `Intel(R) Core(TM) i9-9900X CPU @ 3.50GHz`. To generate benchmarks, run `$ cargo bench`.
 
-```ignore,no_run
-$ cargo bench
-msgpack nil             time:   [4.6849 ns 4.6898 ns 4.6961 ns]
-msgunpack nil           time:   [23.654 ns 23.675 ns 23.707 ns]
-msgunpack ref nil       time:   [20.253 ns 20.280 ns 20.318 ns]
-msgpack int             time:   [6.0831 ns 6.0921 ns 6.1045 ns]
-msgunpack int           time:   [26.375 ns 26.415 ns 26.465 ns]
-msgunpack ref int       time:   [25.163 ns 25.202 ns 25.258 ns]
-msgpack map 1           time:   [17.411 ns 17.432 ns 17.461 ns]
-msgunpack map 1         time:   [118.56 ns 118.67 ns 118.83 ns]
-msgunpack ref map 1     time:   [59.850 ns 59.898 ns 59.972 ns]
-msgpack map 5           time:   [73.763 ns 73.881 ns 74.049 ns]
-msgunpack map 5         time:   [539.42 ns 539.91 ns 540.56 ns]
-msgunpack ref map 5     time:   [161.39 ns 161.58 ns 161.86 ns]
-msgpack map 10          time:   [133.03 ns 133.18 ns 133.39 ns]
-msgunpack map 10        time:   [1.0574 us 1.0583 us 1.0597 us]
-msgunpack ref map 10    time:   [289.05 ns 289.43 ns 289.98 ns]
-msgpack map 100         time:   [1.2123 us 1.2135 us 1.2150 us]
-msgunpack map 100       time:   [9.3964 us 9.4076 us 9.4214 us]
-msgunpack ref map 100   time:   [2.6246 us 2.6283 us 2.6334 us]
-```
+The benchmark compares msgpacker with two very popuplar Rust implementations: rmpv and rmps. The performance was similar for pack and unpack, with msgpacker taking the lead a couple of times. Very often rmps was far behind.
+
+The performance of integer packing was better for msgpacker.
+
+![violin-int](https://user-images.githubusercontent.com/8730839/138608513-b62b44f5-0651-4619-9173-967a5cb08647.png)
+
+However, for unpack by reference, the performance was dramatically better in favor of msgpacker for map deserialization.
+
+![violin](https://user-images.githubusercontent.com/8730839/138608511-e8c44d3a-684a-4077-8fe8-034e19d3c34f.png)
+
+The full report can be found [here](https://github.com/codx-dev/msgpacker/tree/main/msgpacker-bench/html).

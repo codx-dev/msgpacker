@@ -1,0 +1,18 @@
+[package]
+name = "msgpacker-bench"
+version = "0.1.0"
+authors = ["Victor Lopez <victor@codx.io>"]
+edition = "2021"
+repository = "https://github.com/codx-dev/msgpacker"
+description = "Benchmarks for msgpacker."
+
+[dev-dependencies]
+criterion = { version = "0.3", features = ["html_reports"] }
+msgpacker = "*"
+rmp-serde = "0.15"
+rmpv = "1.0"
+serde = "1.0"
+
+[[bench]]
+name = "msgpacker"
+harness = false
