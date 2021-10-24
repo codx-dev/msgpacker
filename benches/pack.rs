@@ -7,7 +7,7 @@ pub fn pack(c: &mut Criterion) {
     let message_int = Message::from(i64::MIN);
 
     let m = MapEntry::new("some-key".into(), 0.into());
-    let message_map_1 = Message::map(m);
+    let message_map_1 = Message::map(vec![m]);
 
     let m = (0..5)
         .map(|i| MapEntry::new("some-key".into(), i.into()))
@@ -30,7 +30,11 @@ pub fn pack(c: &mut Criterion) {
     let mut buffer = vec![0u8; 4096];
 
     c.bench_function("msgpack nil", |b| {
-        b.iter(|| message_nil.pack(black_box(&mut buffer)).unwrap())
+        b.iter(|| {
+            message_nil
+                .pack(black_box(&mut buffer.as_mut_slice()))
+                .unwrap()
+        })
     });
 
     c.bench_function("msgunpack nil", |b| {
@@ -42,7 +46,11 @@ pub fn pack(c: &mut Criterion) {
     });
 
     c.bench_function("msgpack int", |b| {
-        b.iter(|| message_int.pack(black_box(&mut buffer)).unwrap())
+        b.iter(|| {
+            message_int
+                .pack(black_box(&mut buffer.as_mut_slice()))
+                .unwrap()
+        })
     });
 
     c.bench_function("msgunpack int", |b| {
@@ -54,7 +62,11 @@ pub fn pack(c: &mut Criterion) {
     });
 
     c.bench_function("msgpack map 1", |b| {
-        b.iter(|| message_map_5.pack(black_box(&mut buffer)).unwrap())
+        b.iter(|| {
+            message_map_1
+                .pack(black_box(&mut buffer.as_mut_slice()))
+                .unwrap()
+        })
     });
 
     c.bench_function("msgunpack map 1", |b| {
@@ -66,7 +78,11 @@ pub fn pack(c: &mut Criterion) {
     });
 
     c.bench_function("msgpack map 5", |b| {
-        b.iter(|| message_map_5.pack(black_box(&mut buffer)).unwrap())
+        b.iter(|| {
+            message_map_5
+                .pack(black_box(&mut buffer.as_mut_slice()))
+                .unwrap()
+        })
     });
 
     c.bench_function("msgunpack map 5", |b| {
@@ -78,7 +94,11 @@ pub fn pack(c: &mut Criterion) {
     });
 
     c.bench_function("msgpack map 10", |b| {
-        b.iter(|| message_map_10.pack(black_box(&mut buffer)).unwrap())
+        b.iter(|| {
+            message_map_10
+                .pack(black_box(&mut buffer.as_mut_slice()))
+                .unwrap()
+        })
     });
 
     c.bench_function("msgunpack map 10", |b| {
@@ -90,7 +110,11 @@ pub fn pack(c: &mut Criterion) {
     });
 
     c.bench_function("msgpack map 100", |b| {
-        b.iter(|| message_map_100.pack(black_box(&mut buffer)).unwrap())
+        b.iter(|| {
+            message_map_100
+                .pack(black_box(&mut buffer.as_mut_slice()))
+                .unwrap()
+        })
     });
 
     c.bench_function("msgunpack map 100", |b| {

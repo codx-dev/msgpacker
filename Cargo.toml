@@ -1,6 +1,6 @@
 [package]
 name = "msgpacker"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Victor Lopez <victor@codx.io>"]
 categories = ["compression", "encoding", "parser-implementations"]
 edition = "2021"
