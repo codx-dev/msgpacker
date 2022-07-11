@@ -87,10 +87,12 @@ packable_copy!(u8);
 packable_copy!(u16);
 packable_copy!(u32);
 packable_copy!(u64);
+packable_copy!(usize);
 packable_copy!(i8);
 packable_copy!(i16);
 packable_copy!(i32);
 packable_copy!(i64);
+packable_copy!(isize);
 packable_copy!(bool);
 packable_copy!(Float);
 packable_copy!(f32);
@@ -105,10 +107,12 @@ packable_vec!(Integer);
 packable_vec!(u16);
 packable_vec!(u32);
 packable_vec!(u64);
+packable_vec!(usize);
 packable_vec!(i8);
 packable_vec!(i16);
 packable_vec!(i32);
 packable_vec!(i64);
+packable_vec!(isize);
 packable_vec!(bool);
 packable_vec!(Float);
 packable_vec!(f32);
@@ -196,6 +200,12 @@ impl From<u64> for Message {
     }
 }
 
+impl From<usize> for Message {
+    fn from(v: usize) -> Self {
+        Self::Integer(Integer::unsigned(v as u64))
+    }
+}
+
 impl From<i8> for Message {
     fn from(v: i8) -> Self {
         Self::Integer(Integer::signed(v))
@@ -217,6 +227,12 @@ impl From<i32> for Message {
 impl From<i64> for Message {
     fn from(v: i64) -> Self {
         Self::Integer(Integer::signed(v))
+    }
+}
+
+impl From<isize> for Message {
+    fn from(v: isize) -> Self {
+        Self::Integer(Integer::signed(v as i64))
     }
 }
 
@@ -322,6 +338,12 @@ impl<'a> From<u64> for MessageRef<'a> {
     }
 }
 
+impl<'a> From<usize> for MessageRef<'a> {
+    fn from(v: usize) -> Self {
+        Self::Integer(Integer::unsigned(v as u64))
+    }
+}
+
 impl<'a> From<i8> for MessageRef<'a> {
     fn from(v: i8) -> Self {
         Self::Integer(Integer::signed(v))
@@ -343,6 +365,12 @@ impl<'a> From<i32> for MessageRef<'a> {
 impl<'a> From<i64> for MessageRef<'a> {
     fn from(v: i64) -> Self {
         Self::Integer(Integer::signed(v))
+    }
+}
+
+impl<'a> From<isize> for MessageRef<'a> {
+    fn from(v: isize) -> Self {
+        Self::Integer(Integer::signed(v as i64))
     }
 }
 
@@ -702,6 +730,34 @@ impl<'a> TryFrom<MessageRef<'a>> for u64 {
     }
 }
 
+impl TryFrom<Message> for usize {
+    type Error = io::Error;
+
+    fn try_from(message: Message) -> Result<Self, Self::Error> {
+        message
+            .as_integer()
+            .map(|i| i.as_unsigned() as usize)
+            .ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected usize message",
+            ))
+    }
+}
+
+impl<'a> TryFrom<MessageRef<'a>> for usize {
+    type Error = io::Error;
+
+    fn try_from(message: MessageRef<'a>) -> Result<Self, Self::Error> {
+        message
+            .as_integer()
+            .map(|i| i.as_unsigned() as usize)
+            .ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected usize message",
+            ))
+    }
+}
+
 impl TryFrom<Message> for i8 {
     type Error = io::Error;
 
@@ -810,6 +866,34 @@ impl<'a> TryFrom<MessageRef<'a>> for i64 {
             .ok_or(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "expected i64 message",
+            ))
+    }
+}
+
+impl TryFrom<Message> for isize {
+    type Error = io::Error;
+
+    fn try_from(message: Message) -> Result<Self, Self::Error> {
+        message
+            .as_integer()
+            .map(|i| i.as_signed() as isize)
+            .ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected isize message",
+            ))
+    }
+}
+
+impl<'a> TryFrom<MessageRef<'a>> for isize {
+    type Error = io::Error;
+
+    fn try_from(message: MessageRef<'a>) -> Result<Self, Self::Error> {
+        message
+            .as_integer()
+            .map(|i| i.as_signed() as isize)
+            .ok_or(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected isize message",
             ))
     }
 }
