@@ -13,7 +13,48 @@ We have two main structures available:
 * Message - Owned parsed values
 * MessageRef - Message parsed by reference and bound to the lifetime of the readers source
 
+For convenience, a derive macro is available to implement `Packable` and `Unpackable` for the types. These implementations will allow the types to be sent and received from `MessagePacker` and `MessageUnpacker` implementations, such as `CursorPacker`.
+
 ## Example
+
+```rust
+use msgpacker::prelude::*;
+
+#[derive(MsgPacker, Debug, Clone, PartialEq, Eq)]
+pub struct Foo {
+    val: u64,
+    text: String,
+    flag: bool,
+    bar: Bar,
+}
+
+#[derive(MsgPacker, Debug, Clone, PartialEq, Eq)]
+pub struct Bar {
+    arr: [u8; 32],
+}
+
+let bar = Bar { arr: [0xff; 32] };
+let foo = Foo {
+    val: 15,
+    text: String::from("Hello, world!"),
+    flag: true,
+    bar,
+};
+
+// Create a new bytes buffer
+let mut buffer: Vec<u8> = vec![];
+
+// Pack the message into the buffer
+CursorPacker::new(&mut buffer).pack(foo.clone()).expect("failed to pack `Foo`");
+
+// Unpack the message from the buffer
+let foo_p = CursorPacker::new(&buffer).unpack::<Foo>().expect("failed to unpack `Foo`");
+
+// Assert the unpacked message is exactly the same as the original
+assert_eq!(foo, foo_p);
+```
+
+## Example of manual implementation
 
 ```rust
 use msgpacker::prelude::*;

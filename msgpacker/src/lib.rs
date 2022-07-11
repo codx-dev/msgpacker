@@ -9,6 +9,7 @@ mod integer;
 mod map;
 mod message;
 mod message_ref;
+mod packer;
 
 pub use message::Message;
 pub use message_ref::MessageRef;
@@ -26,5 +27,9 @@ pub mod types {
 pub mod prelude {
     pub use crate::message::Message;
     pub use crate::message_ref::MessageRef;
+    pub use crate::packer::{CursorPacker, MessagePacker, MessageUnpacker, Packable, Unpackable};
     pub use crate::types::*;
+
+    #[cfg(feature = "derive")]
+    pub use msgpacker_derive::MsgPacker;
 }

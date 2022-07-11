@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "msgpacker",
-    "msgpacker-bench"
+    "msgpacker-bench",
+    "msgpacker-derive"
 ]
 
 [profile.bench]

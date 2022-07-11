@@ -1,6 +1,6 @@
 [package]
-name = "msgpacker"
-version = "0.2.0"
+name = "msgpacker-derive"
+version = "0.1.0"
 authors = ["Victor Lopez <victor@codx.io>"]
 categories = ["compression", "encoding", "parser-implementations"]
 edition = "2021"
@@ -8,11 +8,11 @@ keywords = ["messagepack", "msgpack"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/codx-dev/msgpacker"
-description = "MessagePack protocol implementation for Rust."
+description = "Derive macros for the MessagePack protocol implementation for Rust."
+
+[lib]
+proc-macro = true
 
 [dependencies]
-msgpacker-derive = { version = "0.1", optional = true }
-
-[features]
-default = ["derive"]
-derive = ["msgpacker-derive"]
+quote = "1.0"
+syn = { version = "1.0", features = ["full"] }
