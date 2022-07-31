@@ -307,6 +307,20 @@ pub struct CursorPacker<B> {
     cursor: Cursor<B>,
 }
 
+impl<B> Deref for CursorPacker<B> {
+    type Target = Cursor<B>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.cursor
+    }
+}
+
+impl<B> DerefMut for CursorPacker<B> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.cursor
+    }
+}
+
 impl<B> From<Cursor<B>> for CursorPacker<B> {
     fn from(cursor: Cursor<B>) -> Self {
         Self { cursor }

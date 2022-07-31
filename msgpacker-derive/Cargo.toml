@@ -1,6 +1,6 @@
 [package]
 name = "msgpacker-derive"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Victor Lopez <victor@codx.io>"]
 categories = ["compression", "encoding", "parser-implementations"]
 edition = "2021"

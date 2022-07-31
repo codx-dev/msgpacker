@@ -63,7 +63,30 @@ pub fn msg_packer(input: TokenStream) -> TokenStream {
             }
         }
 
+        impl<'a> msgpacker::prelude::SizeableMessage for &'a #name {
+            fn packed_len(&self) -> usize {
+                let mut n = 0;
+
+                #block_size
+
+                n
+            }
+        }
+
         impl msgpacker::prelude::Packable for #name {
+            fn pack<W>(&self, mut packer: W) -> std::io::Result<usize>
+            where
+                W: std::io::Write
+            {
+                let mut n = 0;
+
+                #block
+
+                Ok(n)
+            }
+        }
+
+        impl<'a> msgpacker::prelude::Packable for &'a #name {
             fn pack<W>(&self, mut packer: W) -> std::io::Result<usize>
             where
                 W: std::io::Write
