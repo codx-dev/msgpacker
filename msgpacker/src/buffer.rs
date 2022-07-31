@@ -59,3 +59,18 @@ where
 pub const unsafe fn cast_fixed_array<const M: usize, const N: usize>(array: [u8; M]) -> [u8; N] {
     *mem::transmute::<&[u8; M], &[u8; N]>(&array)
 }
+
+#[test]
+fn take_buf_wont_panic_for_small_buf() {
+    use std::io::Read;
+
+    const LEN: usize = 10;
+
+    let mut cursor = io::Cursor::new([0u8; LEN]);
+
+    let err = unsafe { take_buf(cursor.by_ref(), LEN + 1) }
+        .err()
+        .expect("buffer isn't big enough");
+
+    assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
+}

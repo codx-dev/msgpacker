@@ -5,6 +5,7 @@ use crate::format::MessageFormat;
 use crate::integer::Integer;
 use crate::map::MapEntry;
 use crate::message_ref::MessageRef;
+use crate::packer::SizeableMessage;
 
 use std::io;
 use std::ops::Index;
@@ -112,10 +113,7 @@ impl Message {
 
     /// Return `true` if the message is nil
     pub const fn is_nil(&self) -> bool {
-        match self {
-            Self::Nil => true,
-            _ => false,
-        }
+        matches!(self, Self::Nil)
     }
 
     /// Create a new unsigned interger
@@ -215,7 +213,7 @@ impl Message {
 
             MessageFormat::Int8 => {
                 buffer::take(reader, &mut buf, 1)?;
-                let n = Integer::Int64(buf[0] as i64);
+                let n = Integer::Int64((buf[0] as i8) as i64);
 
                 Ok(Self::Integer(n))
             }
@@ -759,6 +757,8 @@ impl Message {
             )),
         }
 
+        debug_assert_eq!(n, self.packed_len());
+
         Ok(n)
     }
 }
@@ -770,11 +770,16 @@ impl<M: Into<Message>> Index<M> for Message {
         let i = i.into();
 
         self.as_map()
-            .map(|m| {
+            .and_then(|m| {
                 m.iter()
                     .find_map(|m| if m.key() == &i { Some(m.val()) } else { None })
             })
-            .flatten()
             .unwrap_or(&Message::Nil)
+    }
+}
+
+impl SizeableMessage for Message {
+    fn packed_len(&self) -> usize {
+        self.to_ref().packed_len()
     }
 }
