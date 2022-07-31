@@ -19,6 +19,7 @@ fn pack_unpack() -> io::Result<()> {
         Message::Integer(Integer::signed(i16::MIN as i64)),
         Message::Integer(Integer::signed(i8::MIN as i64 - 1)),
         Message::Integer(Integer::signed(i8::MIN as i64)),
+        Message::Integer(Integer::signed(-33)),
         Message::Integer(Integer::signed(-32)),
         Message::Integer(Integer::signed(-1)),
         Message::Integer(Integer::unsigned(0u64)),

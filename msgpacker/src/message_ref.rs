@@ -3,6 +3,7 @@ use crate::float::Float;
 use crate::format::MessageFormat;
 use crate::integer::Integer;
 use crate::map::MapEntryRef;
+use crate::packer::SizeableMessage;
 use crate::{buffer, Message};
 
 use std::ops::Index;
@@ -103,10 +104,7 @@ impl<'a> MessageRef<'a> {
 
     /// Return `true` if the message is nil
     pub const fn is_nil(&self) -> bool {
-        match self {
-            Self::Nil => true,
-            _ => false,
-        }
+        matches!(self, Self::Nil)
     }
 
     /// Create a new unsigned interger
@@ -173,7 +171,7 @@ impl<'a> MessageRef<'a> {
 
             MessageFormat::Int8 => {
                 let buf = buffer::take_buf(reader, 1)?;
-                let n = Integer::Int64(buf[0] as i64);
+                let n = Integer::Int64((buf[0] as i8) as i64);
 
                 Ok(Self::Integer(n))
             }
@@ -763,6 +761,8 @@ impl<'a> MessageRef<'a> {
             )),
         }
 
+        debug_assert_eq!(n, self.packed_len());
+
         Ok(n)
     }
 }
@@ -777,11 +777,108 @@ impl<'a, 'b, M: Into<MessageRef<'b>>> Index<M> for MessageRef<'a> {
         // Safety: self is bound to 'a
         let m: Option<&'a [MapEntryRef<'a>]> = unsafe { mem::transmute(m) };
 
-        m.map(|m| {
+        m.and_then(|m| {
             m.iter()
                 .find_map(|m| if m.key() == &i { Some(m.val()) } else { None })
         })
-        .flatten()
         .unwrap_or(&MessageRef::Nil)
+    }
+}
+
+impl<'a> SizeableMessage for MessageRef<'a> {
+    fn packed_len(&self) -> usize {
+        match self {
+            Self::Nil => 1,
+            Self::Boolean(true) => 1,
+            Self::Boolean(false) => 1,
+            Self::Integer(i) => i.packed_len(),
+            Self::Float(f) => f.packed_len(),
+
+            Self::String(s) if s.len() <= 31 => 1 + s.len(),
+
+            Self::String(s) if s.len() <= u8::MAX as usize => 2 + s.len(),
+
+            Self::String(s) if s.len() <= u16::MAX as usize => 3 + s.len(),
+
+            Self::String(s) => 5 + s.len(),
+
+            Self::Bin(b) if b.len() <= u8::MAX as usize => 2 + b.len(),
+
+            Self::Bin(b) if b.len() <= u16::MAX as usize => 3 + b.len(),
+
+            Self::Bin(b) => 5 + b.len(),
+
+            Self::Array(a) if a.len() <= 15 => 1 + a.iter().map(Self::packed_len).sum::<usize>(),
+
+            Self::Array(a) if a.len() <= u16::MAX as usize => {
+                3 + a.iter().map(Self::packed_len).sum::<usize>()
+            }
+
+            Self::Array(a) => 5 + a.iter().map(Self::packed_len).sum::<usize>(),
+
+            Self::Map(m) if m.len() <= 15 => {
+                1 + m
+                    .iter()
+                    .map(MapEntryRef::inner)
+                    .map(|(k, v)| k.packed_len() + v.packed_len())
+                    .sum::<usize>()
+            }
+
+            Self::Map(m) if m.len() <= u16::MAX as usize => {
+                3 + m
+                    .iter()
+                    .map(MapEntryRef::inner)
+                    .map(|(k, v)| k.packed_len() + v.packed_len())
+                    .sum::<usize>()
+            }
+
+            Self::Map(m) => {
+                4 + m
+                    .iter()
+                    .map(MapEntryRef::inner)
+                    .map(|(k, v)| k.packed_len() + v.packed_len())
+                    .sum::<usize>()
+            }
+
+            Self::Extension(ExtensionRef::FixExt1(_, _)) => 3,
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() == 1 => 3,
+
+            Self::Extension(ExtensionRef::FixExt2(_, e)) => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() == 2 => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::FixExt4(_, e)) => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() == 4 => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::FixExt8(_, e)) => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() == 8 => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::FixExt16(_, e)) => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() == 16 => 2 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() <= u8::MAX as usize => 3 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) if e.len() <= u16::MAX as usize => 4 + e.len(),
+
+            Self::Extension(ExtensionRef::Ext(_, e)) => 6 + e.len(),
+
+            Self::Extension(ExtensionRef::Timestamp(d))
+                if d.as_secs() <= u32::MAX as u64 && d.subsec_nanos() == 0 =>
+            {
+                6
+            }
+
+            Self::Extension(ExtensionRef::Timestamp(d))
+                if d.as_secs() < 1u64 << 34 && d.subsec_nanos() < 1u32 << 30 =>
+            {
+                10
+            }
+
+            Self::Extension(ExtensionRef::Timestamp(_)) => 15,
+        }
     }
 }

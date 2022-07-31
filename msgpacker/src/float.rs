@@ -1,5 +1,6 @@
 use crate::buffer;
 use crate::format::MessageFormat;
+use crate::packer::SizeableMessage;
 
 use std::io;
 
@@ -57,6 +58,18 @@ impl Float {
             }
         }
 
+        debug_assert_eq!(n, self.packed_len());
+
         Ok(n)
+    }
+}
+
+impl SizeableMessage for Float {
+    fn packed_len(&self) -> usize {
+        match self {
+            Self::F32(_) => 5,
+
+            Self::F64(_) => 9,
+        }
     }
 }

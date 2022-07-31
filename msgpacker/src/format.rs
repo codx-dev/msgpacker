@@ -1,3 +1,5 @@
+use crate::packer::SizeableMessage;
+
 /// [specs](https://github.com/msgpack/msgpack/blob/master/spec.md#formats)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MessageFormat {
@@ -75,6 +77,12 @@ pub enum MessageFormat {
     Map32,
     /// 5-bits negative integer
     NegativeFixInt(i8),
+}
+
+impl SizeableMessage for MessageFormat {
+    fn packed_len(&self) -> usize {
+        1
+    }
 }
 
 impl From<u8> for MessageFormat {

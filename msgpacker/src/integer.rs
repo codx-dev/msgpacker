@@ -1,5 +1,6 @@
 use crate::buffer;
 use crate::format::MessageFormat;
+use crate::packer::SizeableMessage;
 
 use std::io;
 
@@ -158,7 +159,45 @@ impl Integer {
             }
         }
 
+        debug_assert_eq!(n, self.packed_len());
+
         Ok(n)
+    }
+}
+
+impl SizeableMessage for Integer {
+    fn packed_len(&self) -> usize {
+        match self {
+            Self::Int64(i) if *i <= i32::MIN as i64 => 9,
+
+            Self::Int64(i) if *i <= i16::MIN as i64 => 5,
+
+            Self::Int64(i) if *i <= i8::MIN as i64 => 3,
+
+            Self::Int64(i) if *i <= -33 => 2,
+
+            Self::Int64(i) if *i <= -1 => 1,
+
+            Self::Int64(i) if *i <= 127 => 1,
+
+            Self::Uint64(i) if *i <= 127 => 1,
+
+            Self::Int64(i) if *i <= u8::MAX as i64 => 2,
+
+            Self::Uint64(i) if *i <= u8::MAX as u64 => 2,
+
+            Self::Int64(i) if *i <= u16::MAX as i64 => 3,
+
+            Self::Uint64(i) if *i <= u16::MAX as u64 => 3,
+
+            Self::Int64(i) if *i <= u32::MAX as i64 => 5,
+
+            Self::Uint64(i) if *i <= u32::MAX as u64 => 5,
+
+            Self::Int64(_) => 9,
+
+            Self::Uint64(_) => 9,
+        }
     }
 }
 
