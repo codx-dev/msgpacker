@@ -31,8 +31,7 @@ pub mod prelude {
     pub use crate::message::Message;
     pub use crate::message_ref::MessageRef;
     pub use crate::packer::{
-        BufferedUnpacker, CursorPacker, MessagePacker, MessageUnpacker, Packable, SizeableMessage,
-        Unpackable, UnpackableIter,
+        MessagePacker, MessageUnpacker, Packable, SizeableMessage, Unpackable, UnpackableIter,
     };
     pub use crate::types::*;
 

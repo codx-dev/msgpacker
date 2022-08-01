@@ -1,4 +1,7 @@
 #![no_main]
+
+use std::io;
+
 use libfuzzer_sys::fuzz_target;
 
 use arbitrary::Arbitrary;
@@ -19,7 +22,7 @@ fuzz_target!(|m: AllMessages| {
     let mut m = m;
 
     let buf: Vec<u8> = vec![];
-    let mut packer = CursorPacker::new(buf);
+    let mut packer = io::Cursor::new(buf);
 
     packer.pack(m.clone()).expect("failed to pack message");
     packer.set_position(0);

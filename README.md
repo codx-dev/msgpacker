@@ -13,12 +13,13 @@ We have two main structures available:
 * Message - Owned parsed values
 * MessageRef - Message parsed by reference and bound to the lifetime of the readers source
 
-For convenience, a derive macro is available to implement `Packable` and `Unpackable` for the types. These implementations will allow the types to be sent and received from `MessagePacker` and `MessageUnpacker` implementations, such as `CursorPacker`.
+For convenience, a derive macro is available to implement `Packable` and `Unpackable` for the types. These implementations will allow the types to be sent and received from `MessagePacker` and `MessageUnpacker` implementations. If the feature `impl-io` is enabled, these traits will be automatically implemented for instances of `io::{Read, Write}`.
 
 ## Example
 
 ```rust
 use msgpacker::prelude::*;
+use std::io;
 
 #[derive(MsgPacker, Debug, Clone, PartialEq, Eq)]
 pub struct Foo {
@@ -45,10 +46,14 @@ let foo = Foo {
 let mut buffer: Vec<u8> = vec![];
 
 // Pack the message into the buffer
-CursorPacker::new(&mut buffer).pack(foo.clone()).expect("failed to pack `Foo`");
+//
+// Provided the feature `impl-io` is activated, `io::Cursor` will extend `MessagePacker` since it implements `io::Write`
+io::Cursor::new(&mut buffer).pack(foo.clone()).expect("failed to pack `Foo`");
 
 // Unpack the message from the buffer
-let foo_p = CursorPacker::new(&buffer).unpack::<Foo>().expect("failed to unpack `Foo`");
+//
+// Provided the feature `impl-io` is activated, `io::Cursor` will extend `MessageUnpacker` since it implements `io::Read`
+let foo_p = io::Cursor::new(&buffer).unpack::<Foo>().expect("failed to unpack `Foo`");
 
 // Assert the unpacked message is exactly the same as the original
 assert_eq!(foo, foo_p);
