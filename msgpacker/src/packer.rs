@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{self, BufRead, Cursor, Read, Seek, SeekFrom, Write};
+use std::io::{self, BufRead, Read, Write};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
@@ -50,15 +50,16 @@ pub trait MessagePacker {
     }
 }
 
-impl<M> MessagePacker for &mut M
+#[cfg(feature = "impl-io")]
+impl<W> MessagePacker for W
 where
-    M: MessagePacker,
+    W: io::Write,
 {
     fn pack<P>(&mut self, package: P) -> io::Result<usize>
     where
         P: Packable,
     {
-        <M as MessagePacker>::pack(self, package)
+        package.pack(self)
     }
 }
 
@@ -75,19 +76,8 @@ pub trait MessageUnpacker {
     }
 }
 
-impl<M> MessageUnpacker for &mut M
-where
-    M: MessageUnpacker,
-{
-    fn unpack<P>(&mut self) -> io::Result<P>
-    where
-        P: Unpackable,
-    {
-        <M as MessageUnpacker>::unpack(self)
-    }
-}
-
-impl<R> MessageUnpacker for io::BufReader<R>
+#[cfg(feature = "impl-io")]
+impl<R> MessageUnpacker for R
 where
     R: io::Read,
 {
@@ -95,86 +85,9 @@ where
     where
         P: Unpackable,
     {
-        P::unpack(self)
-    }
-}
+        let reader = io::BufReader::new(self);
 
-/// A buffered packer implementation
-#[derive(Debug)]
-pub struct BufferedUnpacker<R> {
-    buffer: io::BufReader<R>,
-}
-
-impl<R> BufferedUnpacker<R>
-where
-    R: io::Read,
-{
-    /// Create a new instance from an implementation of [`io::Read`]
-    pub fn from_reader(reader: R) -> Self {
-        io::BufReader::new(reader).into()
-    }
-}
-
-impl<R> From<io::BufReader<R>> for BufferedUnpacker<R> {
-    fn from(buffer: io::BufReader<R>) -> Self {
-        Self { buffer }
-    }
-}
-
-impl<R> Deref for BufferedUnpacker<R> {
-    type Target = io::BufReader<R>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.buffer
-    }
-}
-
-impl<R> DerefMut for BufferedUnpacker<R> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.buffer
-    }
-}
-
-impl<R> Read for BufferedUnpacker<R>
-where
-    R: io::Read,
-{
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.buffer.read(buf)
-    }
-}
-
-impl<R> io::Seek for BufferedUnpacker<R>
-where
-    R: io::Seek,
-{
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.buffer.seek(pos)
-    }
-}
-
-impl<R> io::BufRead for BufferedUnpacker<R>
-where
-    R: io::Read,
-{
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        self.buffer.fill_buf()
-    }
-
-    fn consume(&mut self, amt: usize) {
-        self.buffer.consume(amt)
-    }
-}
-
-impl<R> MessageUnpacker for BufferedUnpacker<R>
-where
-    R: io::Read,
-{
-    fn unpack<P>(&mut self) -> io::Result<P>
-    where
-        P: Unpackable,
-    {
-        P::unpack(self)
+        P::unpack(reader)
     }
 }
 
@@ -289,144 +202,5 @@ where
             Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => None,
             Err(e) => Some(Err(e)),
         }
-    }
-}
-
-impl MessagePacker for fs::File {
-    fn pack<P>(&mut self, package: P) -> io::Result<usize>
-    where
-        P: Packable,
-    {
-        package.pack(self)
-    }
-}
-
-/// A packer/unpacker implementation with an underlying [`Cursor`]
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct CursorPacker<B> {
-    cursor: Cursor<B>,
-}
-
-impl<B> Deref for CursorPacker<B> {
-    type Target = Cursor<B>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.cursor
-    }
-}
-
-impl<B> DerefMut for CursorPacker<B> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.cursor
-    }
-}
-
-impl<B> From<Cursor<B>> for CursorPacker<B> {
-    fn from(cursor: Cursor<B>) -> Self {
-        Self { cursor }
-    }
-}
-
-impl<B> From<CursorPacker<B>> for Cursor<B> {
-    fn from(packer: CursorPacker<B>) -> Self {
-        packer.cursor
-    }
-}
-
-impl<B> CursorPacker<B> {
-    /// Create a new cursor packer with an underlying [`Cursor`]
-    pub fn new(buffer: B) -> Self {
-        Cursor::new(buffer).into()
-    }
-}
-
-impl CursorPacker<Vec<u8>> {
-    /// Read file into buffer
-    pub fn from_file<P>(path: P) -> io::Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        fs::read(path).map(Self::new)
-    }
-}
-
-impl<B> Read for CursorPacker<B>
-where
-    B: AsRef<[u8]>,
-{
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.cursor.read(buf)
-    }
-}
-
-impl<B> MessageUnpacker for CursorPacker<B>
-where
-    B: AsRef<[u8]>,
-{
-    fn unpack<P>(&mut self) -> io::Result<P>
-    where
-        P: Unpackable,
-    {
-        P::unpack(self)
-    }
-}
-
-macro_rules! impl_packer_writer {
-    ($b:ty) => {
-        impl Write for CursorPacker<$b> {
-            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                self.cursor.write(buf)
-            }
-
-            fn flush(&mut self) -> io::Result<()> {
-                self.cursor.flush()
-            }
-        }
-
-        impl MessagePacker for CursorPacker<$b> {
-            fn pack<P>(&mut self, package: P) -> io::Result<usize>
-            where
-                P: Packable,
-            {
-                package.pack(self)
-            }
-        }
-    };
-}
-
-// Implemented this way due to architectural restrictions for cursor implementation in stdlib
-impl_packer_writer!(Vec<u8>);
-impl_packer_writer!(&mut [u8]);
-impl_packer_writer!(&mut Vec<u8>);
-
-impl<const N: usize> Write for CursorPacker<[u8; N]> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.cursor.write(buf)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.cursor.flush()
-    }
-}
-
-impl<B> BufRead for CursorPacker<B>
-where
-    B: AsRef<[u8]>,
-{
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        self.cursor.fill_buf()
-    }
-
-    fn consume(&mut self, amt: usize) {
-        self.cursor.consume(amt)
-    }
-}
-
-impl<B> Seek for CursorPacker<B>
-where
-    B: AsRef<[u8]>,
-{
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.cursor.seek(pos)
     }
 }

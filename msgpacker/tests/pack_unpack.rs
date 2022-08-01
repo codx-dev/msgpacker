@@ -96,7 +96,7 @@ fn pack_unpack() -> io::Result<()> {
     cases.push(Message::Map(map));
     cases.push(Message::Array(cases.clone()));
 
-    for m in cases {
+    for m in &cases {
         m.pack(&mut cursor)?;
         cursor.rewind()?;
 
@@ -117,10 +117,25 @@ fn pack_unpack() -> io::Result<()> {
         cursor.rewind()?;
 
         assert_eq!(buf_msg, buf_ref);
-        assert_eq!(m, m_o);
-        assert_eq!(m, m_p);
+        assert_eq!(m, &m_o);
+        assert_eq!(m, &m_p);
         assert_eq!(m_ref, m_ref_p);
     }
+
+    cursor.rewind()?;
+
+    cases
+        .iter()
+        .try_for_each(|m| m.pack(&mut cursor).map(|_| ()))?;
+
+    cursor.rewind()?;
+
+    let cases_p: Vec<Message> = (0..cases.len())
+        .map(|_| Message::unpack(&mut cursor).expect("failed to unpack"))
+        .collect();
+
+    // Assert serial reconstruction
+    assert_eq!(cases, cases_p);
 
     Ok(())
 }
