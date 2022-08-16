@@ -102,6 +102,27 @@ impl<'a> MessageRef<'a> {
     as_value_ref!(as_map, &'a [MapEntryRef], Map);
     as_value_ref!(as_extension, &'a ExtensionRef, Extension);
 
+    /// Attempt to match every item of the message as map, and then convert it to key/value pairs
+    pub fn try_collect_map<M, K, V>(self) -> Option<io::Result<M>>
+    where
+        M: FromIterator<(K, V)>,
+        K: TryFrom<MessageRef<'a>, Error = io::Error>,
+        V: TryFrom<MessageRef<'a>, Error = io::Error>,
+    {
+        let m = match self {
+            MessageRef::Map(m) => m,
+            _ => return None,
+        };
+
+        let map = m
+            .into_iter()
+            .map(|entry| entry.into_inner())
+            .map(|(key, value)| K::try_from(key).and_then(|k| V::try_from(value).map(|v| (k, v))))
+            .collect();
+
+        Some(map)
+    }
+
     /// Return `true` if the message is nil
     pub const fn is_nil(&self) -> bool {
         matches!(self, Self::Nil)
@@ -880,5 +901,18 @@ impl<'a> SizeableMessage for MessageRef<'a> {
 
             Self::Extension(ExtensionRef::Timestamp(_)) => 15,
         }
+    }
+}
+
+impl<'a, K, V> FromIterator<(K, V)> for MessageRef<'a>
+where
+    K: Into<MessageRef<'a>>,
+    V: Into<MessageRef<'a>>,
+{
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        iter.into_iter()
+            .map(|(key, value)| MapEntryRef::new(key.into(), value.into()))
+            .collect::<Vec<_>>()
+            .into()
     }
 }

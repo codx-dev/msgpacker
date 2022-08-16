@@ -1,5 +1,6 @@
 use msgpacker::prelude::*;
 
+use std::collections::HashMap;
 use std::io::{self, Cursor, Seek};
 use std::time::Duration;
 
@@ -138,4 +139,23 @@ fn pack_unpack() -> io::Result<()> {
     assert_eq!(cases, cases_p);
 
     Ok(())
+}
+
+#[test]
+fn pack_unpack_map_works() {
+    let data = vec![
+        (10u32, String::from("test 1")),
+        (38u32, String::from("")),
+        (187u32, String::from("another test")),
+    ];
+
+    let map = data.clone().into_iter().collect::<HashMap<_, _>>();
+    let msg = MessageRef::from_iter(map.iter().map(|(k, v)| (*k, v)));
+
+    let map_p = msg
+        .try_collect_map()
+        .expect("message is not a map")
+        .expect("failed to parse items");
+
+    assert_eq!(map, map_p);
 }
