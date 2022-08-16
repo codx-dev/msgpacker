@@ -24,6 +24,10 @@ impl<'a> MapEntryRef<'a> {
         &self.val
     }
 
+    pub(crate) fn into_inner(self) -> (MessageRef<'a>, MessageRef<'a>) {
+        (self.key, self.val)
+    }
+
     /// Access the internal key and value as a tuple of references
     pub const fn inner(&self) -> (&MessageRef<'a>, &MessageRef<'a>) {
         (&self.key, &self.val)
