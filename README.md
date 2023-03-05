@@ -170,4 +170,4 @@ However, for unpack by reference, the performance was dramatically better in fav
 
 ![violin](https://user-images.githubusercontent.com/8730839/138608511-e8c44d3a-684a-4077-8fe8-034e19d3c34f.png)
 
-The full report can be found [here](https://github.com/codx-dev/msgpacker/tree/main/msgpacker-bench/html).
+The full report can be found [here](https://github.com/codx-dev/msgpacker/tree/main/msgpacker-bench/report.zip).
