@@ -77,17 +77,17 @@ impl Integer {
         let mut n = 0;
 
         match self {
-            Self::Int64(i) if *i <= i32::MIN as i64 => {
+            Self::Int64(i) if *i < i32::MIN as i64 => {
                 n += buffer::put(&mut writer, &[u8::from(MessageFormat::Int64)])?;
                 n += buffer::put(&mut writer, &i.to_be_bytes())?;
             }
 
-            Self::Int64(i) if *i <= i16::MIN as i64 => {
+            Self::Int64(i) if *i < i16::MIN as i64 => {
                 n += buffer::put(&mut writer, &[u8::from(MessageFormat::Int32)])?;
                 n += buffer::put(&mut writer, &(*i as i32).to_be_bytes())?;
             }
 
-            Self::Int64(i) if *i <= i8::MIN as i64 => {
+            Self::Int64(i) if *i < i8::MIN as i64 => {
                 n += buffer::put(&mut writer, &[u8::from(MessageFormat::Int16)])?;
                 n += buffer::put(&mut writer, &(*i as i16).to_be_bytes())?;
             }
@@ -168,11 +168,11 @@ impl Integer {
 impl SizeableMessage for Integer {
     fn packed_len(&self) -> usize {
         match self {
-            Self::Int64(i) if *i <= i32::MIN as i64 => 9,
+            Self::Int64(i) if *i < i32::MIN as i64 => 9,
 
-            Self::Int64(i) if *i <= i16::MIN as i64 => 5,
+            Self::Int64(i) if *i < i16::MIN as i64 => 5,
 
-            Self::Int64(i) if *i <= i8::MIN as i64 => 3,
+            Self::Int64(i) if *i < i8::MIN as i64 => 3,
 
             Self::Int64(i) if *i <= -33 => 2,
 
