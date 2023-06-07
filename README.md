@@ -71,7 +71,13 @@ Results obtained with `Intel(R) Core(TM) i9-9900X CPU @ 3.50GHz`.
 
 The simplicity of the implementation unlocks a performance more than ~10x better than [rmp-serde](https://crates.io/crates/rmp-serde).
 
+
+#### Pack 1.000 elements
+
 ![image](https://github.com/codx-dev/msgpacker/assets/8730839/ef69622d-0e2f-4bb1-b47c-6412d89fc19a)
 ![image](https://github.com/codx-dev/msgpacker/assets/8730839/ce2de037-252a-4c90-b429-430d131ccf7e)
+
+#### Unpack 1.000 elements
+
 ![image](https://github.com/codx-dev/msgpacker/assets/8730839/5576f99d-6f37-4907-89db-5d666b13f9d5)
 ![image](https://github.com/codx-dev/msgpacker/assets/8730839/234c31d2-f319-414b-9418-4103e97d0a9c)
