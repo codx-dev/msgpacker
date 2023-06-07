@@ -1,25 +1,14 @@
-use crate::buffer;
+use super::{
+    error::Error,
+    helpers::{take_buffer, take_buffer_iter, take_byte, take_byte_iter, take_num, take_num_iter},
+    Format, Packable, Unpackable,
+};
+use alloc::{vec, vec::Vec};
+use core::{iter, time::Duration};
 
-use std::slice;
-use std::time::Duration;
-
-mod extension_ref;
-
-pub use extension_ref::ExtensionRef;
-
-/// Custom extension definition
+/// Custom extension definition as reference to a bytes source.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Extension {
-    /// 1 byte custom extension
-    FixExt1(i8, u8),
-    /// 2 bytes custom extension
-    FixExt2(i8, [u8; 2]),
-    /// 4 bytes custom extension
-    FixExt4(i8, [u8; 4]),
-    /// 8 bytes custom extension
-    FixExt8(i8, [u8; 8]),
-    /// 16 bytes custom extension
-    FixExt16(i8, [u8; 16]),
     /// n-bytes custom extension
     Ext(i8, Vec<u8>),
     /// Protocol reserved extension to represent timestamps
@@ -27,135 +16,310 @@ pub enum Extension {
 }
 
 impl Extension {
-    /// Protocol reserved extension type for timestamps
-    pub const TIMESTAMP_TYPE: i8 = -1;
+    /// Protocol constant for a timestamp extension
+    pub const TIMESTAMP: i8 = -1;
+}
 
-    /// Create a new extension of fixed size
-    ///
-    /// Return `None` if the provided size doesn't match any of the variants
-    pub const fn extension_fixed<const N: usize>(class: i8, data: [u8; N]) -> Option<Self> {
-        match N {
-            1 => Some(Self::FixExt1(class, data[0])),
-            2 => Some(Self::FixExt2(class, unsafe {
-                buffer::cast_fixed_array(data)
-            })),
-            4 => Some(Self::FixExt4(class, unsafe {
-                buffer::cast_fixed_array(data)
-            })),
-            8 => Some(Self::FixExt8(class, unsafe {
-                buffer::cast_fixed_array(data)
-            })),
-            16 => Some(Self::FixExt16(class, unsafe {
-                buffer::cast_fixed_array(data)
-            })),
-            _ => None,
-        }
-    }
-
-    /// Create a new timestamp variant of extension.
-    ///
-    /// Timestamp is an extension reserved by the protocol.
-    pub const fn extension_timestamp(duration: Duration) -> Self {
-        Self::Timestamp(duration)
-    }
-
-    /// Create a new variable size extension.
-    ///
-    /// This function will not optmize the data to use fixed size extension, even if applicable.
-    /// The consumer will decide when to use fixed or variable extensions, depending on his
-    /// use-case.
-    pub const fn extension_variable(class: i8, data: Vec<u8>) -> Self {
-        Self::Ext(class, data)
-    }
-
-    /// Underlying type of the extension
-    pub const fn typ(&self) -> i8 {
+impl Packable for Extension {
+    #[allow(unreachable_code)]
+    fn pack<T>(&self, buf: &mut T) -> usize
+    where
+        T: Extend<u8>,
+    {
         match self {
-            Self::FixExt1(t, _) => *t,
-            Self::FixExt2(t, _) => *t,
-            Self::FixExt4(t, _) => *t,
-            Self::FixExt8(t, _) => *t,
-            Self::FixExt16(t, _) => *t,
-            Self::Ext(t, _) => *t,
-            Self::Timestamp(_) => Self::TIMESTAMP_TYPE,
-        }
-    }
+            Extension::Ext(t, b) if b.len() == 1 => {
+                buf.extend(
+                    iter::once(Format::FIXEXT1)
+                        .chain(iter::once(*t as u8))
+                        .chain(iter::once(b[0])),
+                );
+                3
+            }
 
-    /// Underlying data of the extension
-    pub fn data(&self) -> &[u8] {
-        match self {
-            Self::FixExt1(_, d) => slice::from_ref(d),
-            Self::FixExt2(_, d) => d,
-            Self::FixExt4(_, d) => d,
-            Self::FixExt8(_, d) => d,
-            Self::FixExt16(_, d) => d,
-            Self::Ext(_, d) => &d[..],
-            Self::Timestamp(_) => &[],
-        }
-    }
+            Extension::Ext(t, b) if b.len() == 2 => {
+                buf.extend(
+                    iter::once(Format::FIXEXT2)
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                4
+            }
 
-    /// Mutable access to the underlying data of the extension
-    pub fn data_mut(&mut self) -> &mut [u8] {
-        match self {
-            Self::FixExt1(_, d) => slice::from_mut(d),
-            Self::FixExt2(_, d) => d,
-            Self::FixExt4(_, d) => d,
-            Self::FixExt8(_, d) => d,
-            Self::FixExt16(_, d) => d,
-            Self::Ext(_, d) => d,
-            Self::Timestamp(_) => &mut [],
-        }
-    }
+            Extension::Ext(t, b) if b.len() == 4 => {
+                buf.extend(
+                    iter::once(Format::FIXEXT4)
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                6
+            }
 
-    /// Convert fixed variants to variable size
-    pub fn to_variable(self) -> Self {
-        match self {
-            Self::FixExt1(t, d) => Self::Ext(t, vec![d]),
-            Self::FixExt2(t, d) => Self::Ext(t, d.into()),
-            Self::FixExt4(t, d) => Self::Ext(t, d.into()),
-            Self::FixExt8(t, d) => Self::Ext(t, d.into()),
-            Self::FixExt16(t, d) => Self::Ext(t, d.into()),
-            Self::Ext(t, d) => Self::Ext(t, d),
-            Self::Timestamp(d) => Self::Timestamp(d),
-        }
-    }
+            Extension::Ext(t, b) if b.len() == 8 => {
+                buf.extend(
+                    iter::once(Format::FIXEXT8)
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                10
+            }
 
-    /// Cast a reference with lifetime bould to `self`
-    pub fn to_ref(&self) -> ExtensionRef<'_> {
-        match self {
-            Self::FixExt1(t, e) => ExtensionRef::FixExt1(*t, *e),
-            Self::FixExt2(t, e) => ExtensionRef::FixExt2(*t, e),
-            Self::FixExt4(t, e) => ExtensionRef::FixExt4(*t, e),
-            Self::FixExt8(t, e) => ExtensionRef::FixExt8(*t, e),
-            Self::FixExt16(t, e) => ExtensionRef::FixExt16(*t, e),
-            Self::Ext(t, e) => ExtensionRef::Ext(*t, e.as_slice()),
-            Self::Timestamp(d) => ExtensionRef::Timestamp(*d),
-        }
-    }
+            Extension::Ext(t, b) if b.len() == 16 => {
+                buf.extend(
+                    iter::once(Format::FIXEXT16)
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                18
+            }
 
-    /// Return the protocol reserved variant for timestamp, if matches
-    pub const fn timestamp(&self) -> Option<&Duration> {
-        match self {
-            Self::Timestamp(d) => Some(d),
-            _ => None,
+            Extension::Ext(t, b) if b.len() <= u8::MAX as usize => {
+                buf.extend(
+                    iter::once(Format::EXT8)
+                        .chain(iter::once(b.len() as u8))
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                3 + b.len()
+            }
+
+            Extension::Ext(t, b) if b.len() <= u16::MAX as usize => {
+                buf.extend(
+                    iter::once(Format::EXT16)
+                        .chain((b.len() as u16).to_be_bytes().iter().copied())
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                4 + b.len()
+            }
+
+            Extension::Ext(t, b) if b.len() <= u32::MAX as usize => {
+                buf.extend(
+                    iter::once(Format::EXT32)
+                        .chain((b.len() as u32).to_be_bytes().iter().copied())
+                        .chain(iter::once(*t as u8))
+                        .chain(b.iter().copied()),
+                );
+                6 + b.len()
+            }
+
+            Extension::Ext(_, _) => {
+                #[cfg(feature = "strict")]
+                panic!("strict serialization enabled; the buffer is too large");
+                0
+            }
+
+            Extension::Timestamp(d) if d.as_secs() <= u32::MAX as u64 && d.subsec_nanos() == 0 => {
+                buf.extend(
+                    iter::once(Format::FIXEXT4)
+                        .chain(iter::once(Self::TIMESTAMP as u8))
+                        .chain((d.as_secs() as u32).to_be_bytes().iter().copied()),
+                );
+                6
+            }
+
+            Extension::Timestamp(d)
+                if d.as_secs() < 1u64 << 34 && d.subsec_nanos() < 1u32 << 30 =>
+            {
+                let secs = d.as_secs();
+                let secs_nanos = ((secs >> 32) & 0b11) as u32;
+                let secs = secs as u32;
+
+                let nanos = d.subsec_nanos() << 2;
+                let nanos = nanos | secs_nanos;
+
+                buf.extend(
+                    iter::once(Format::FIXEXT8)
+                        .chain(iter::once(Self::TIMESTAMP as u8))
+                        .chain(nanos.to_be_bytes().iter().copied())
+                        .chain(secs.to_be_bytes().iter().copied()),
+                );
+                10
+            }
+
+            Extension::Timestamp(d) => {
+                buf.extend(
+                    iter::once(Format::EXT8)
+                        .chain(iter::once(12))
+                        .chain(iter::once(Self::TIMESTAMP as u8))
+                        .chain(d.subsec_nanos().to_be_bytes().iter().copied())
+                        .chain(d.as_secs().to_be_bytes().iter().copied()),
+                );
+                15
+            }
         }
     }
 }
 
-impl AsRef<[u8]> for Extension {
-    fn as_ref(&self) -> &[u8] {
-        self.data()
+impl Unpackable for Extension {
+    type Error = Error;
+
+    fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+        let format = take_byte(&mut buf)?;
+        match format {
+            Format::FIXEXT1 => {
+                let t = take_byte(&mut buf)? as i8;
+                let x = take_byte(&mut buf)?;
+                Ok((3, Extension::Ext(t, vec![x])))
+            }
+            Format::FIXEXT2 => {
+                let t = take_byte(&mut buf)? as i8;
+                let b = take_buffer(&mut buf, 2)?;
+                Ok((4, Extension::Ext(t, b.to_vec())))
+            }
+            Format::FIXEXT4 => {
+                let t = take_byte(&mut buf)? as i8;
+                if t == Self::TIMESTAMP {
+                    let secs = take_num(&mut buf, u32::from_be_bytes)?;
+                    Ok((6, Extension::Timestamp(Duration::from_secs(secs as u64))))
+                } else {
+                    let b = take_buffer(&mut buf, 4)?;
+                    Ok((6, Extension::Ext(t, b.to_vec())))
+                }
+            }
+            Format::FIXEXT8 => {
+                let t = take_byte(&mut buf)? as i8;
+                if t == Self::TIMESTAMP {
+                    let data = take_num(&mut buf, u64::from_be_bytes)?;
+
+                    let nanos = (data >> 34) as u32;
+                    let secs = data & ((1u64 << 34) - 1);
+
+                    Ok((10, Extension::Timestamp(Duration::new(secs, nanos))))
+                } else {
+                    let b = take_buffer(&mut buf, 8)?;
+                    Ok((10, Extension::Ext(t, b.to_vec())))
+                }
+            }
+            Format::FIXEXT16 => {
+                let t = take_byte(&mut buf)? as i8;
+                let b = take_buffer(&mut buf, 16)?;
+                Ok((18, Extension::Ext(t, b.to_vec())))
+            }
+            Format::EXT8 => {
+                let len = take_byte(&mut buf)? as usize;
+                let t = take_byte(&mut buf)? as i8;
+                if len == 12 && t == Self::TIMESTAMP {
+                    let nanos = take_num(&mut buf, u32::from_be_bytes)?;
+                    let secs = take_num(&mut buf, u64::from_be_bytes)?;
+                    Ok((15, Extension::Timestamp(Duration::new(secs, nanos))))
+                } else {
+                    let b = take_buffer(&mut buf, len)?;
+                    Ok((3 + len, Extension::Ext(t, b.to_vec())))
+                }
+            }
+            Format::EXT16 => {
+                let len = take_num(&mut buf, u16::from_be_bytes)? as usize;
+                let t = take_byte(&mut buf)? as i8;
+                let b = take_buffer(&mut buf, len)?;
+                Ok((4 + len, Extension::Ext(t, b.to_vec())))
+            }
+            Format::EXT32 => {
+                let len = take_num(&mut buf, u32::from_be_bytes)? as usize;
+                let t = take_byte(&mut buf)? as i8;
+                let b = take_buffer(&mut buf, len)?;
+                Ok((6 + len, Extension::Ext(t, b.to_vec())))
+            }
+            _ => Err(Error::InvalidExtension),
+        }
+    }
+
+    fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        let mut bytes = bytes.into_iter();
+        let format = take_byte_iter(bytes.by_ref())?;
+        match format {
+            Format::FIXEXT1 => {
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                let x = take_byte_iter(bytes.by_ref())?;
+                Ok((3, Extension::Ext(t, vec![x])))
+            }
+            Format::FIXEXT2 => {
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                let b = take_buffer_iter(bytes.by_ref(), 2)?;
+                Ok((4, Extension::Ext(t, b)))
+            }
+            Format::FIXEXT4 => {
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                if t == Self::TIMESTAMP {
+                    let secs = take_num_iter(bytes.by_ref(), u32::from_be_bytes)?;
+                    Ok((6, Extension::Timestamp(Duration::from_secs(secs as u64))))
+                } else {
+                    let b = take_buffer_iter(bytes.by_ref(), 4)?;
+                    Ok((6, Extension::Ext(t, b)))
+                }
+            }
+            Format::FIXEXT8 => {
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                if t == Self::TIMESTAMP {
+                    let data = take_num_iter(bytes.by_ref(), u64::from_be_bytes)?;
+
+                    let nanos = (data >> 34) as u32;
+                    let secs = data & ((1u64 << 34) - 1);
+
+                    Ok((10, Extension::Timestamp(Duration::new(secs, nanos))))
+                } else {
+                    let b = take_buffer_iter(bytes.by_ref(), 8)?;
+                    Ok((10, Extension::Ext(t, b)))
+                }
+            }
+            Format::FIXEXT16 => {
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                let b = take_buffer_iter(bytes.by_ref(), 16)?;
+                Ok((18, Extension::Ext(t, b)))
+            }
+            Format::EXT8 => {
+                let len = take_byte_iter(bytes.by_ref())? as usize;
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                if len == 12 && t == Self::TIMESTAMP {
+                    let nanos = take_num_iter(bytes.by_ref(), u32::from_be_bytes)?;
+                    let secs = take_num_iter(bytes.by_ref(), u64::from_be_bytes)?;
+                    Ok((15, Extension::Timestamp(Duration::new(secs, nanos))))
+                } else {
+                    let b = take_buffer_iter(bytes.by_ref(), len)?;
+                    Ok((3 + len, Extension::Ext(t, b)))
+                }
+            }
+            Format::EXT16 => {
+                let len = take_num_iter(bytes.by_ref(), u16::from_be_bytes)? as usize;
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                let b = take_buffer_iter(bytes.by_ref(), len)?;
+                Ok((4 + len, Extension::Ext(t, b)))
+            }
+            Format::EXT32 => {
+                let len = take_num_iter(bytes.by_ref(), u32::from_be_bytes)? as usize;
+                let t = take_byte_iter(bytes.by_ref())? as i8;
+                let b = take_buffer_iter(bytes.by_ref(), len)?;
+                Ok((6 + len, Extension::Ext(t, b)))
+            }
+            _ => Err(Error::InvalidExtension),
+        }
     }
 }
 
-impl AsMut<[u8]> for Extension {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.data_mut()
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
 
-impl From<Duration> for Extension {
-    fn from(d: Duration) -> Self {
-        Self::Timestamp(d)
+    proptest! {
+        #[test]
+        fn extension_bytes(t: i8, b: Vec<u8>) {
+            let x = Extension::Ext(t, b);
+            let mut bytes = vec![];
+            x.pack(&mut bytes);
+            let (_, y) = Extension::unpack(&bytes).unwrap();
+            assert_eq!(x, y);
+        }
+
+        #[test]
+        fn extension_duration(d: Duration) {
+            let x = Extension::Timestamp(d);
+            let mut bytes = vec![];
+            x.pack(&mut bytes);
+            let (_, y) = Extension::unpack(&bytes).unwrap();
+            assert_eq!(x, y);
+        }
     }
 }

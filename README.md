@@ -1,4 +1,4 @@
-# MessagePacker - some Rust in the msgpack protocol
+# MessagePacker - a no-std msgpack implementation
 
 [![crates.io](https://img.shields.io/crates/v/msgpacker?label=latest)](https://crates.io/crates/msgpacker)
 [![Documentation](https://docs.rs/msgpacker/badge.svg)](https://docs.rs/msgpacker/)
@@ -8,166 +8,70 @@ The protocol specification can be found [here](https://github.com/msgpack/msgpac
 
 This crate targets simplicity and performance. No dependencies are used, just the standard Rust library.
 
-We have two main structures available:
+It will implement `Packable` and `Unpackable` for Rust atomic types. The traits can also be implemented manually.
 
-* Message - Owned parsed values
-* MessageRef - Message parsed by reference and bound to the lifetime of the readers source
+## Features
 
-For convenience, a derive macro is available to implement `Packable` and `Unpackable` for the types. These implementations will allow the types to be sent and received from `MessagePacker` and `MessageUnpacker` implementations. If the feature `impl-io` is enabled, these traits will be automatically implemented for instances of `io::{Read, Write}`.
+- alloc: Implements the functionality for `Vec`, `String`, and unlocks custom extensions.
+- derive: Enables `MsgPacker` derive convenience macro.
+- strict: Will panic if there is a protocol violation of the size of a buffer; the maximum allowed size is `u32::MAX`.
 
 ## Example
 
 ```rust
 use msgpacker::prelude::*;
-use std::io;
+use std::collections::HashMap;
 
-#[derive(MsgPacker, Debug, Clone, PartialEq, Eq)]
-pub struct Foo {
-    val: u64,
-    text: String,
-    flag: bool,
-    bar: Bar,
+// boilerplate derives - those aren't required
+#[derive(Debug, PartialEq, Eq)]
+// this convenience derive macro will implement `Packable` and `Unpackable`
+#[derive(MsgPacker)]
+pub struct City {
+    // A `String` implements `MsgPacker` by default
+    name: String,
+
+    // Maps have a special treatment on the protocol. This directive will automatically
+    // implement `MsgPacker` for any map-like type (i.e. interacts with iterators of key/value
+    // pairs).
+    #[msgpacker(map)]
+    inhabitants_per_street: HashMap<String, u64>,
+
+    // Arrays also have a special treatment on the protocol. This directive will automatically
+    // implement `MsgPacker` for any iterator of types that implements `MsgPacker`.
+    // This is not implemented by default because there is a special case for `Vec<u8>`, that
+    // has a dedicated protocol binary format.
+    #[msgpacker(array)]
+    zones: Vec<String>,
 }
 
-#[derive(MsgPacker, Debug, Clone, PartialEq, Eq)]
-pub struct Bar {
-    arr: [u8; 32],
-}
-
-let bar = Bar { arr: [0xff; 32] };
-let foo = Foo {
-    val: 15,
-    text: String::from("Hello, world!"),
-    flag: true,
-    bar,
+// create an instance of a city.
+let city = City {
+    name: "Kuala Lumpur".to_string(),
+    inhabitants_per_street: HashMap::from([
+        ("Street 1".to_string(), 10),
+        ("Street 2".to_string(), 20),
+    ]),
+    zones: vec!["Zone 1".to_string(), "Zone 2".to_string()],
 };
 
-// Create a new bytes buffer
-let mut buffer: Vec<u8> = vec![];
+// serialize the city into bytes
+let mut buf = Vec::new();
+let n = city.pack(&mut buf);
+println!("serialized {} bytes", n);
 
-// Pack the message into the buffer
-//
-// Provided the feature `impl-io` is activated, `io::Cursor` will extend `MessagePacker` since it implements `io::Write`
-io::Cursor::new(&mut buffer).pack(foo.clone()).expect("failed to pack `Foo`");
-
-// Unpack the message from the buffer
-//
-// Provided the feature `impl-io` is activated, `io::Cursor` will extend `MessageUnpacker` since it implements `io::Read`
-let foo_p = io::Cursor::new(&buffer).unpack::<Foo>().expect("failed to unpack `Foo`");
-
-// Assert the unpacked message is exactly the same as the original
-assert_eq!(foo, foo_p);
-```
-
-## Example of manual implementation
-
-```rust
-use msgpacker::prelude::*;
-use std::io::{Cursor, Seek};
-
-let buffer = vec![0u8; 4096];
-let mut cursor = Cursor::new(buffer);
-
-let key = Message::string("some-key");
-let value = Message::integer_signed(-15);
-let entry = MapEntry::new(key, value);
-let message = Message::map(vec![entry]);
-
-// Write the message to the cursor
-message.pack(&mut cursor).expect("Message pack failed");
-
-cursor.rewind().expect("Reset the cursor to the beginning");
-
-// Read the message from the cursor
-let restored = Message::unpack(&mut cursor).expect("Message unpack failed");
-let value = restored
-    .as_map()
-    .expect("A map was originally created")
-    .first()
-    .expect("The map contained one entry")
-    .val()
-    .as_integer()
-    .expect("The value was an integer")
-    .as_i64()
-    .expect("The value was a negative integer");
-
-assert_eq!(value, -15);
-
-// Alternatively, we can use the index implementation
-let value = restored["some-key"]
-    .as_integer()
-    .expect("The value was an integer")
-    .as_i64()
-    .expect("The value was a negative number");
-
-assert_eq!(value, -15);
-```
-
-## Example (by ref)
-
-```rust
-use msgpacker::prelude::*;
-use std::io::{Cursor, Seek};
-
-let mut cursor = Cursor::new(vec![0u8; 4096]);
-
-let key = Message::String("some-key".into());
-let value = Message::Integer(Integer::signed(-15));
-let entry = MapEntry::new(key, value);
-let message = Message::Map(vec![entry]);
-
-// Write the message to the cursor
-message.pack(&mut cursor).expect("Message pack failed");
-
-cursor.rewind().expect("Reset the cursor to the beginning");
-
-// The consumer need to guarantee himself the cursor source will live long enough to satisfy the
-// lifetime of the message reference.
-//
-// If this is guaranteed, then the function is safe.
-let restored = unsafe { MessageRef::unpack(&mut cursor).expect("Message unpack failed") };
-
-// The lifetime of `MessageRef` is not bound to the `Read` implementation because the source
-// might outlive it - as in this example
-let _buffer = cursor.into_inner();
-
-// `MessageRef` behaves the same as `Message`, but the runtime cost is cheaper because it will
-// avoid a couple of unnecessary copies
-let value = restored
-    .as_map()
-    .expect("A map was originally created")
-    .first()
-    .expect("The map contained one entry")
-    .val()
-    .as_integer()
-    .expect("The value was an integer")
-    .as_i64()
-    .expect("The value was a negative integer");
-
-assert_eq!(value, -15);
-
-// MessageRef also implements `Index`
-let value = restored["some-key"]
-    .as_integer()
-    .expect("The value was an integer")
-    .as_i64()
-    .expect("The value was a negative number");
-
-assert_eq!(value, -15);
+// deserialize the city and assert correctness
+let (n, deserialized) = City::unpack(&buf).unwrap();
+println!("deserialized {} bytes", n);
+assert_eq!(city, deserialized);
 ```
 
 ## Benchmarks
 
-Results obtained with `Intel(R) Core(TM) i9-9900X CPU @ 3.50GHz`. To generate benchmarks, run `$ cargo bench`.
+Results obtained with `Intel(R) Core(TM) i9-9900X CPU @ 3.50GHz`.
 
-The benchmark compares msgpacker with two very popuplar Rust implementations: rmpv and rmps. The performance was similar for pack and unpack, with msgpacker taking the lead a couple of times. Very often rmps was far behind.
+The simplicity of the implementation unlocks a performance more than ~10x better than [rmp-serde](https://crates.io/crates/rmp-serde).
 
-The performance of integer packing was better for msgpacker.
-
-![violin-int](https://user-images.githubusercontent.com/8730839/138608513-b62b44f5-0651-4619-9173-967a5cb08647.png)
-
-However, for unpack by reference, the performance was dramatically better in favor of msgpacker for map deserialization.
-
-![violin](https://user-images.githubusercontent.com/8730839/138608511-e8c44d3a-684a-4077-8fe8-034e19d3c34f.png)
-
-The full report can be found [here](https://github.com/codx-dev/msgpacker/tree/main/msgpacker-bench/report.zip).
+![image](https://github.com/codx-dev/msgpacker/assets/8730839/ef69622d-0e2f-4bb1-b47c-6412d89fc19a)
+![image](https://github.com/codx-dev/msgpacker/assets/8730839/ce2de037-252a-4c90-b429-430d131ccf7e)
+![image](https://github.com/codx-dev/msgpacker/assets/8730839/5576f99d-6f37-4907-89db-5d666b13f9d5)
+![image](https://github.com/codx-dev/msgpacker/assets/8730839/234c31d2-f319-414b-9418-4103e97d0a9c)

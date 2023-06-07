@@ -5,10 +5,31 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::{
-    parse_macro_input, parse_quote, Block, Data, DeriveInput, FieldValue, Fields, Member, Token,
+    parse_macro_input, parse_quote, Block, Data, DataStruct, DeriveInput, Field, FieldValue,
+    Fields, Member, Meta, Token,
 };
 
-#[proc_macro_derive(MsgPacker)]
+fn contains_attribute(field: &Field, name: &str) -> bool {
+    let name = name.to_string();
+    if let Some(attr) = field.attrs.first() {
+        if let Meta::List(list) = &attr.meta {
+            if list.path.is_ident("msgpacker") {
+                if list
+                    .tokens
+                    .clone()
+                    .into_iter()
+                    .find(|a| a.to_string() == name)
+                    .is_some()
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+#[proc_macro_derive(MsgPacker, attributes(msgpacker))]
 pub fn msg_packer(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -16,98 +37,151 @@ pub fn msg_packer(input: TokenStream) -> TokenStream {
     let data = input.data;
 
     let mut values: Punctuated<FieldValue, Token![,]> = Punctuated::new();
-    let (block, block_size): (Block, Block) = match data {
-        Data::Struct(syn::DataStruct {
+    let block_packable: Block = parse_quote! {
+        {
+            let mut n = 0;
+        }
+    };
+    let block_unpackable: Block = parse_quote! {
+        {
+            let mut n = 0;
+        }
+    };
+    let block_unpackable_iter: Block = parse_quote! {
+        {
+            let mut bytes = bytes.into_iter();
+            let mut n = 0;
+        }
+    };
+
+    let (mut block_packable, mut block_unpackable, mut block_unpackable_iter): (
+        Block,
+        Block,
+        Block,
+    ) = match data {
+        Data::Struct(DataStruct {
             struct_token: _,
             fields: Fields::Named(f),
             semi_token: _,
-        }) => f
-            .named
-            .into_pairs()
-            .map(|p| p.into_value())
-            .fold((syn::parse_str("{}").unwrap(), syn::parse_str("{}").unwrap()), |(mut block, mut block_size), field| {
+        }) => f.named.into_pairs().map(|p| p.into_value()).fold(
+            (block_packable, block_unpackable, block_unpackable_iter),
+            |(mut block_packable, mut block_unpackable, mut block_unpackable_iter), field| {
                 let ident = field.ident.as_ref().cloned().unwrap();
-                let ty = field.ty;
+                let ty = field.ty.clone();
 
-                block_size.stmts.push(parse_quote! {
-                    n += <#ty as msgpacker::prelude::SizeableMessage>::packed_len(&self.#ident);
-                });
+                if contains_attribute(&field, "map") {
+                    block_packable.stmts.push(parse_quote! {
+                        n += ::msgpacker::pack_map(buf, &self.#ident);
+                    });
 
-                block.stmts.push(parse_quote! {
-                    n += <#ty as msgpacker::prelude::Packable>::pack(&self.#ident, packer.by_ref())?;
-                });
+                    block_unpackable.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_map(buf).map(|(nv, t)| {
+                            n += nv;
+                            buf = &buf[nv..];
+                            t
+                        })?;
+                    });
 
-                let fv = FieldValue {
+                    block_unpackable_iter.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_map_iter(bytes.by_ref()).map(|(nv, t)| {
+                            n += nv;
+                            t
+                        })?;
+                    });
+                } else if contains_attribute(&field, "array") {
+                    block_packable.stmts.push(parse_quote! {
+                        n += ::msgpacker::pack_array(buf, &self.#ident);
+                    });
+
+                    block_unpackable.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_array(buf).map(|(nv, t)| {
+                            n += nv;
+                            buf = &buf[nv..];
+                            t
+                        })?;
+                    });
+
+                    block_unpackable_iter.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_array_iter(bytes.by_ref()).map(|(nv, t)| {
+                            n += nv;
+                            t
+                        })?;
+                    });
+                } else {
+                    block_packable.stmts.push(parse_quote! {
+                        n += <#ty as ::msgpacker::Packable>::pack(&self.#ident, buf);
+                    });
+
+                    block_unpackable.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::Unpackable::unpack(buf).map(|(nv, t)| {
+                            n += nv;
+                            buf = &buf[nv..];
+                            t
+                        })?;
+                    });
+
+                    block_unpackable_iter.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::Unpackable::unpack_iter(bytes.by_ref()).map(|(nv, t)| {
+                            n += nv;
+                            t
+                        })?;
+                    });
+                }
+
+
+                values.push(FieldValue {
                     attrs: vec![],
-                    member: Member::Named(ident),
+                    member: Member::Named(ident.clone()),
                     colon_token: Some(<Token![:]>::default()),
-                    expr: parse_quote! {
-                        <#ty as msgpacker::prelude::Unpackable>::unpack(unpacker.by_ref())?
-                    },
-                };
-                values.push(fv);
+                    expr: parse_quote! { #ident },
+                });
 
-                (block, block_size)
-            }),
+                (block_packable, block_unpackable, block_unpackable_iter)
+            },
+        ),
         _ => todo!(),
     };
 
+    block_packable.stmts.push(parse_quote! {
+        return n;
+    });
+
+    block_unpackable.stmts.push(parse_quote! {
+        return Ok((
+            n,
+            Self {
+                #values
+            },
+        ));
+    });
+
+    block_unpackable_iter.stmts.push(parse_quote! {
+        return Ok((
+            n,
+            Self {
+                #values
+            },
+        ));
+    });
+
     let expanded = quote! {
-        impl msgpacker::prelude::SizeableMessage for #name {
-            fn packed_len(&self) -> usize {
-                let mut n = 0;
-
-                #block_size
-
-                n
-            }
-        }
-
-        impl<'a> msgpacker::prelude::SizeableMessage for &'a #name {
-            fn packed_len(&self) -> usize {
-                let mut n = 0;
-
-                #block_size
-
-                n
-            }
-        }
-
-        impl msgpacker::prelude::Packable for #name {
-            fn pack<W>(&self, mut packer: W) -> std::io::Result<usize>
+        impl ::msgpacker::Packable for #name {
+            fn pack<T>(&self, buf: &mut T) -> usize
             where
-                W: std::io::Write
-            {
-                let mut n = 0;
-
-                #block
-
-                Ok(n)
-            }
+                T: Extend<u8>,
+                #block_packable
         }
 
-        impl<'a> msgpacker::prelude::Packable for &'a #name {
-            fn pack<W>(&self, mut packer: W) -> std::io::Result<usize>
+        impl ::msgpacker::Unpackable for #name {
+            type Error = ::msgpacker::Error;
+
+            fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error>
+                #block_unpackable
+
+            fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
             where
-                W: std::io::Write
-            {
-                let mut n = 0;
-
-                #block
-
-                Ok(n)
-            }
-        }
-
-        impl msgpacker::prelude::Unpackable for #name {
-            fn unpack<R>(mut unpacker: R) -> std::io::Result<Self>
-            where
-                R: std::io::BufRead,
-            {
-                Ok(Self {
-                    #values
-                })
-            }
+                I: IntoIterator<Item = u8>,
+                #block_unpackable_iter
         }
     };
 
