@@ -1,5 +1,6 @@
 use core::fmt;
 use msgpacker::prelude::*;
+use proptest::prelude::*;
 
 #[test]
 fn nil() {
@@ -23,4 +24,24 @@ where
     assert_eq!(a, len);
     assert_eq!(b, len);
     assert_eq!(t, x);
+}
+
+proptest! {
+    #[test]
+    fn array(a: [i32; 4]) {
+        let mut bytes = vec![];
+        let c = a.pack(&mut bytes);
+        let (b, x) = <[i32; 4]>::unpack(&bytes).unwrap();
+        assert_eq!(c, b);
+        assert_eq!(a, x);
+    }
+
+    #[test]
+    fn tuple(a: (i32, String, bool, usize)) {
+        let mut bytes = vec![];
+        let c = a.pack(&mut bytes);
+        let (b, x) = <(i32, String, bool, usize)>::unpack(&bytes).unwrap();
+        assert_eq!(c, b);
+        assert_eq!(a, x);
+    }
 }

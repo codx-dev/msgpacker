@@ -1,5 +1,9 @@
 #![no_std]
-#![feature(iter_array_chunks)]
+#![feature(
+    iter_array_chunks,
+    maybe_uninit_array_assume_init,
+    maybe_uninit_uninit_array
+)]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
