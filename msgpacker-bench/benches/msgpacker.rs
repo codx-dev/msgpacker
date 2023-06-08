@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use msgpacker_bench::Value;
 use rand::{distributions::Standard, prelude::*};
 use rmp_serde::{decode::Deserializer, encode::Serializer};
@@ -33,8 +33,11 @@ pub fn pack(c: &mut Criterion) {
             format!("msgpacker {count}"),
             &(&values[..*count], bufs_msgpacker[i].capacity()),
             |b, (val, buf)| {
-                let mut buf = Vec::with_capacity(*buf);
-                b.iter(|| msgpacker::pack_array(black_box(&mut buf), black_box(val.iter())));
+                b.iter_batched(
+                    || Vec::with_capacity(*buf),
+                    |mut buf| msgpacker::pack_array(black_box(&mut buf), black_box(val.iter())),
+                    BatchSize::LargeInput,
+                );
             },
         );
 
@@ -42,13 +45,15 @@ pub fn pack(c: &mut Criterion) {
             format!("rmps {count}"),
             &(&values[..*count], bufs_rmps[i].capacity()),
             |b, (val, buf)| {
-                let mut buf = Vec::with_capacity(*buf);
-                let mut serializer = Serializer::new(&mut buf);
-                b.iter(|| {
-                    black_box(val)
-                        .serialize(black_box(&mut serializer))
-                        .unwrap()
-                });
+                b.iter_batched(
+                    || Vec::with_capacity(*buf),
+                    |mut buf| {
+                        black_box(val)
+                            .serialize(black_box(&mut Serializer::new(&mut buf)))
+                            .unwrap()
+                    },
+                    BatchSize::LargeInput,
+                );
             },
         );
     }
@@ -67,7 +72,9 @@ pub fn pack(c: &mut Criterion) {
         );
 
         group.bench_with_input(format!("rmps {count}"), &bufs_rmps[i], |b, buf| {
-            b.iter(|| <Vec<Value>>::deserialize(&mut Deserializer::new(&buf[..])).unwrap());
+            b.iter(|| {
+                <Vec<Value>>::deserialize(&mut Deserializer::new(black_box(&buf[..]))).unwrap()
+            });
         });
     }
 
