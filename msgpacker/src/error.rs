@@ -5,6 +5,8 @@ use core::fmt;
 pub enum Error {
     /// The provided buffer is too short and yielded an unexpected EOF.
     BufferTooShort,
+    /// The enum variant is not valid for the static type.
+    InvalidEnumVariant,
     /// The extension is not in accordance to the protocol definition.
     InvalidExtension,
     /// The string is not a valid UTF-8.
