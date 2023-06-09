@@ -541,6 +541,7 @@ fn impl_fields_enum(name: Ident, v: Punctuated<Variant, Token![,]>) -> impl Into
             #[allow(unused_mut)]
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
                 let (mut n, discriminant) = u32::unpack(&mut buf)?;
+                buf = &buf[n..];
                 let slf;
 
                 #block_unpackable;

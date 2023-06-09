@@ -26,6 +26,13 @@ where
     assert_eq!(t, x);
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, MsgPacker, proptest_derive::Arbitrary)]
+pub enum Foo {
+    Bar,
+    Baz(u32, String),
+    Qux { a: Vec<u8>, b: u64 },
+}
+
 proptest! {
     #[test]
     fn array(a: [i32; 4]) {
@@ -41,6 +48,15 @@ proptest! {
         let mut bytes = vec![];
         let c = a.pack(&mut bytes);
         let (b, x) = <(i32, String, bool, usize)>::unpack(&bytes).unwrap();
+        assert_eq!(c, b);
+        assert_eq!(a, x);
+    }
+
+    #[test]
+    fn enum_foo(a: Foo) {
+        let mut bytes = vec![];
+        let c = a.pack(&mut bytes);
+        let (b, x) = Foo::unpack(&bytes).unwrap();
         assert_eq!(c, b);
         assert_eq!(a, x);
     }

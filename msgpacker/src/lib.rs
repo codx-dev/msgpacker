@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![feature(
     iter_array_chunks,
     maybe_uninit_array_assume_init,

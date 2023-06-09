@@ -15,6 +15,7 @@ It will implement `Packable` and `Unpackable` for Rust atomic types. The traits 
 - alloc: Implements the functionality for `Vec`, `String`, and unlocks custom extensions.
 - derive: Enables `MsgPacker` derive convenience macro.
 - strict: Will panic if there is a protocol violation of the size of a buffer; the maximum allowed size is `u32::MAX`.
+- std: Will implement the `Packable` and `Unpackable` for `std` collections.
 
 ## Example
 
@@ -27,20 +28,14 @@ use std::collections::HashMap;
 // this convenience derive macro will implement `Packable` and `Unpackable`
 #[derive(MsgPacker)]
 pub struct City {
-    // A `String` implements `MsgPacker` by default
     name: String,
 
-    // Maps have a special treatment on the protocol. This directive will automatically
-    // implement `MsgPacker` for any map-like type (i.e. interacts with iterators of key/value
-    // pairs).
-    #[msgpacker(map)]
+    // The traits are implemented for stdlib collections. If you have a custom map, you can use the
+    // directive `#[msgpacker(map)]` so the traits will be automatically implemented through the
+    // iterators of the map.
     inhabitants_per_street: HashMap<String, u64>,
 
-    // Arrays also have a special treatment on the protocol. This directive will automatically
-    // implement `MsgPacker` for any iterator of types that implements `MsgPacker`.
-    // This is not implemented by default because there is a special case for `Vec<u8>`, that
-    // has a dedicated protocol binary format.
-    #[msgpacker(array)]
+    // This is also automatically implemented. The manual implementation is via `#[msgpacker(array)]`.
     zones: Vec<String>,
 }
 

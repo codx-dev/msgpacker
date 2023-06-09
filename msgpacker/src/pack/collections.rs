@@ -63,3 +63,101 @@ where
         })
         .sum::<usize>()
 }
+
+#[cfg(feature = "alloc")]
+mod alloc {
+    use super::*;
+    use ::alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+
+    impl<X> Packable for BTreeSet<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
+        }
+    }
+
+    impl<X> Packable for BinaryHeap<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
+        }
+    }
+
+    impl<X> Packable for LinkedList<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
+        }
+    }
+
+    impl<X> Packable for VecDeque<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
+        }
+    }
+
+    impl<K, V> Packable for BTreeMap<K, V>
+    where
+        K: Packable,
+        V: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_map(buf, self)
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+mod std {
+    use super::*;
+    use ::std::collections::{HashMap, HashSet};
+
+    impl<X> Packable for HashSet<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
+        }
+    }
+
+    impl<K, V> Packable for HashMap<K, V>
+    where
+        K: Packable,
+        V: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_map(buf, self)
+        }
+    }
+}

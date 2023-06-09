@@ -20,3 +20,6 @@ impl fmt::Display for Error {
         fmt::Debug::fmt(self, f)
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}

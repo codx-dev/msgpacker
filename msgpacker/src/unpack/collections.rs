@@ -133,3 +133,148 @@ where
         .collect::<Result<_, <V as Unpackable>::Error>>()?;
     Ok((n, map))
 }
+
+#[cfg(feature = "alloc")]
+mod alloc {
+    use super::*;
+    use ::alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+
+    impl<X> Unpackable for BTreeSet<X>
+    where
+        X: Unpackable + Ord,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
+
+    impl<X> Unpackable for BinaryHeap<X>
+    where
+        X: Unpackable + Ord,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
+
+    impl<X> Unpackable for LinkedList<X>
+    where
+        X: Unpackable,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
+
+    impl<X> Unpackable for VecDeque<X>
+    where
+        X: Unpackable,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
+
+    impl<K, V> Unpackable for BTreeMap<K, V>
+    where
+        K: Unpackable + Ord,
+        V: Unpackable,
+        <V as Unpackable>::Error: From<<K as Unpackable>::Error>,
+    {
+        type Error = <V as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_map(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_map_iter(bytes)
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+mod std {
+    use super::*;
+    use ::std::{
+        collections::{HashMap, HashSet},
+        hash::Hash,
+    };
+
+    impl<X> Unpackable for HashSet<X>
+    where
+        X: Unpackable + Hash + Eq,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
+
+    impl<K, V> Unpackable for HashMap<K, V>
+    where
+        K: Unpackable + Hash + Eq,
+        V: Unpackable,
+        <V as Unpackable>::Error: From<<K as Unpackable>::Error>,
+    {
+        type Error = <V as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_map(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_map_iter(bytes)
+        }
+    }
+}
