@@ -3,6 +3,8 @@ use msgpacker::prelude::*;
 use proptest::prelude::*;
 use std::collections::HashMap;
 
+mod utils;
+
 #[derive(
     Debug,
     Default,
@@ -37,9 +39,12 @@ proptest! {
     #[test]
     fn array(value: Vec<Value>) {
         let mut bytes = Vec::new();
-        msgpacker::pack_array(&mut bytes, &value);
-        let (_, x): (usize, Vec<Value>) = msgpacker::unpack_array(&bytes).unwrap();
-        let (_, y): (usize, Vec<Value>) = msgpacker::unpack_array_iter(bytes).unwrap();
+        let n = msgpacker::pack_array(&mut bytes, &value);
+        assert_eq!(n, bytes.len());
+        let (o, x): (usize, Vec<Value>) = msgpacker::unpack_array(&bytes).unwrap();
+        let (p, y): (usize, Vec<Value>) = msgpacker::unpack_array_iter(bytes).unwrap();
+        assert_eq!(n, o);
+        assert_eq!(n, p);
         assert_eq!(value, x);
         assert_eq!(value, y);
     }
@@ -47,9 +52,12 @@ proptest! {
     #[test]
     fn map(map: HashMap<Value, Value>) {
         let mut bytes = Vec::new();
-        msgpacker::pack_map(&mut bytes, &map);
-        let (_, x): (usize, HashMap<Value, Value>) = msgpacker::unpack_map(&bytes).unwrap();
-        let (_, y): (usize, HashMap<Value, Value>) = msgpacker::unpack_map_iter(bytes).unwrap();
+        let n = msgpacker::pack_map(&mut bytes, &map);
+        assert_eq!(n, bytes.len());
+        let (o, x): (usize, HashMap<Value, Value>) = msgpacker::unpack_map(&bytes).unwrap();
+        let (p, y): (usize, HashMap<Value, Value>) = msgpacker::unpack_map_iter(bytes).unwrap();
+        assert_eq!(n, o);
+        assert_eq!(n, p);
         assert_eq!(map, x);
         assert_eq!(map, y);
     }

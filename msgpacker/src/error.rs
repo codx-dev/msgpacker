@@ -13,6 +13,8 @@ pub enum Error {
     InvalidUtf8,
     /// The protocol format tag is not valid.
     UnexpectedFormatTag,
+    /// The provided bin length is not valid.
+    UnexpectedBinLength,
 }
 
 impl fmt::Display for Error {

@@ -16,17 +16,6 @@ pub fn take_byte(buf: &mut &[u8]) -> Result<u8, Error> {
     Ok(l[0])
 }
 
-pub fn take_num_iter<I, V, const N: usize>(bytes: I, f: fn([u8; N]) -> V) -> Result<V, Error>
-where
-    I: Iterator<Item = u8>,
-{
-    bytes
-        .array_chunks()
-        .next()
-        .ok_or(Error::BufferTooShort)
-        .map(f)
-}
-
 pub fn take_num<V, const N: usize>(buf: &mut &[u8], f: fn([u8; N]) -> V) -> Result<V, Error> {
     if buf.len() < N {
         return Err(Error::BufferTooShort);
@@ -45,6 +34,17 @@ pub fn take_buffer<'a>(buf: &mut &'a [u8], len: usize) -> Result<&'a [u8], Error
     let (l, r) = buf.split_at(len);
     *buf = r;
     Ok(l)
+}
+
+pub fn take_num_iter<I, V, const N: usize>(bytes: I, f: fn([u8; N]) -> V) -> Result<V, Error>
+where
+    I: Iterator<Item = u8>,
+{
+    bytes
+        .array_chunks()
+        .next()
+        .ok_or(Error::BufferTooShort)
+        .map(f)
 }
 
 #[cfg(feature = "alloc")]

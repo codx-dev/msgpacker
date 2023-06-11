@@ -1,57 +1,54 @@
 use msgpacker::prelude::*;
 use proptest::prelude::*;
 
+mod utils;
+
 #[test]
 fn empty_vec() {
     let v = vec![];
     let mut bytes = vec![];
-    v.pack(&mut bytes);
-    let (_, x) = Vec::<u8>::unpack(&bytes).unwrap();
+    let n = v.pack(&mut bytes);
+    let (o, x) = Vec::<u8>::unpack(&bytes).unwrap();
+    let (p, y) = Vec::<u8>::unpack_iter(bytes).unwrap();
+    assert_eq!(o, n);
+    assert_eq!(p, n);
     assert_eq!(v, x);
+    assert_eq!(v, y);
 }
 
 #[test]
 fn empty_str() {
     let s = "";
     let mut bytes = vec![];
-    s.pack(&mut bytes);
-    let (_, x) = String::unpack(&bytes).unwrap();
+    let n = s.pack(&mut bytes);
+    let (o, x) = String::unpack(&bytes).unwrap();
+    let (p, y) = String::unpack_iter(bytes).unwrap();
+    assert_eq!(o, n);
+    assert_eq!(p, n);
     assert_eq!(s, x);
+    assert_eq!(s, y);
 }
 
 proptest! {
     #[test]
     fn vec(v: Vec<u8>) {
-        let mut bytes = Vec::with_capacity(v.len() + 16);
-        v.pack(&mut bytes);
-        let (_, x) = Vec::<u8>::unpack(&bytes).unwrap();
-        assert_eq!(v, x);
+        utils::case(v);
     }
 
     #[test]
     fn str(s: String) {
-        let mut bytes = Vec::with_capacity(s.len() + 16);
-        s.pack(&mut bytes);
-        let (_, x) = String::unpack(&bytes).unwrap();
-        assert_eq!(s, x);
+        utils::case(s);
     }
 
     #[test]
     #[ignore]
     fn large_vec(v in prop::collection::vec(any::<u8>(), 0..=u16::MAX as usize * 2)) {
-        let mut bytes = Vec::with_capacity(v.len() + 16);
-        v.pack(&mut bytes);
-        let (_, x) = Vec::<u8>::unpack(&bytes).unwrap();
-        assert_eq!(v, x);
+        utils::case(v);
     }
 
     #[test]
     #[ignore]
     fn large_str(v in prop::collection::vec(any::<char>(), 0..=u16::MAX as usize * 2)) {
-        let s: String = v.iter().collect();
-        let mut bytes = Vec::with_capacity(s.len() + 16);
-        s.pack(&mut bytes);
-        let (_, x) = String::unpack(&bytes).unwrap();
-        assert_eq!(s, x);
+        utils::case(v.into_iter().collect::<String>());
     }
 }

@@ -305,7 +305,10 @@ mod tests {
 
     proptest! {
         #[test]
-        fn extension_bytes(t: i8, b: Vec<u8>) {
+        fn extension_bytes(mut t: i8, b: Vec<u8>) {
+            if t == Extension::TIMESTAMP {
+                t -= 1;
+            }
             let x = Extension::Ext(t, b);
             let mut bytes = vec![];
             x.pack(&mut bytes);
