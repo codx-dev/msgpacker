@@ -68,6 +68,19 @@ where
 mod alloc {
     use super::*;
     use ::alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+    use ::alloc::vec::Vec;
+
+    impl<X> Packable for Vec<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
+        }
+    }
 
     impl<X> Packable for BTreeSet<X>
     where

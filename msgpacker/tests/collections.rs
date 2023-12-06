@@ -32,7 +32,9 @@ struct Value {
     pub t11: PhantomData<String>,
     pub t12: Option<bool>,
     pub t13: Option<Vec<u8>>,
-    pub t14: Option<String>,
+    pub t14: Option<Vec<u16>>,
+    pub t15: Option<Vec<u32>>,
+    pub t16: Option<String>,
 }
 
 proptest! {
