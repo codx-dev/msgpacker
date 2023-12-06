@@ -1,7 +1,8 @@
 use super::{Format, Packable};
+use crate::binary::MsgPackerBinSlice;
 use core::iter;
 
-impl Packable for [u8] {
+impl<'a> Packable for MsgPackerBinSlice<'a> {
     #[allow(unreachable_code)]
     fn pack<T>(&self, buf: &mut T) -> usize
     where
@@ -57,9 +58,10 @@ impl Packable for str {
 #[cfg(feature = "alloc")]
 mod alloc {
     use super::*;
-    use ::alloc::{string::String, vec::Vec};
+    use crate::binary::alloc::MsgPackerBin;
+    use ::alloc::string::String;
 
-    impl Packable for Vec<u8> {
+    impl Packable for MsgPackerBin {
         fn pack<T>(&self, buf: &mut T) -> usize
         where
             T: Extend<u8>,

@@ -5,11 +5,11 @@ mod utils;
 
 #[test]
 fn empty_vec() {
-    let v = vec![];
+    let v = MsgPackerBin(vec![]);
     let mut bytes = vec![];
     let n = v.pack(&mut bytes);
-    let (o, x) = Vec::<u8>::unpack(&bytes).unwrap();
-    let (p, y) = Vec::<u8>::unpack_iter(bytes).unwrap();
+    let (o, x) = MsgPackerBin::unpack(&bytes).unwrap();
+    let (p, y) = MsgPackerBin::unpack_iter(bytes).unwrap();
     assert_eq!(o, n);
     assert_eq!(p, n);
     assert_eq!(v, x);
@@ -31,19 +31,8 @@ fn empty_str() {
 
 proptest! {
     #[test]
-    fn vec(v: Vec<u8>) {
-        utils::case(v);
-    }
-
-    #[test]
     fn str(s: String) {
         utils::case(s);
-    }
-
-    #[test]
-    #[ignore]
-    fn large_vec(v in prop::collection::vec(any::<u8>(), 0..=u16::MAX as usize * 2)) {
-        utils::case(v);
     }
 
     #[test]

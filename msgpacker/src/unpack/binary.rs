@@ -37,14 +37,15 @@ pub fn unpack_str(mut buf: &[u8]) -> Result<(usize, &str), Error> {
 #[cfg(feature = "alloc")]
 mod alloc {
     use super::*;
+    use crate::binary::alloc::MsgPackerBin;
     use crate::helpers::{take_byte_iter, take_num_iter};
     use ::alloc::{string::String, vec::Vec};
 
-    impl Unpackable for Vec<u8> {
+    impl Unpackable for MsgPackerBin {
         type Error = Error;
 
         fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-            unpack_bytes(buf).map(|(n, b)| (n, b.to_vec()))
+            unpack_bytes(buf).map(|(n, b)| (n, MsgPackerBin(b.to_vec())))
         }
 
         fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
@@ -69,7 +70,7 @@ mod alloc {
             if v.len() < len {
                 return Err(Error::BufferTooShort);
             }
-            Ok((n + len, v))
+            Ok((n + len, MsgPackerBin(v)))
         }
     }
 

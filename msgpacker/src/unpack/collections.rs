@@ -138,6 +138,25 @@ where
 mod alloc {
     use super::*;
     use ::alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
+    use ::alloc::vec::Vec;
+
+    impl<X> Unpackable for Vec<X>
+    where
+        X: Unpackable + Ord,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
 
     impl<X> Unpackable for BTreeSet<X>
     where
