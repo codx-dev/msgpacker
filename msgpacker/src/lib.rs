@@ -30,15 +30,36 @@ pub use extension::Extension;
 #[cfg(feature = "derive")]
 pub use msgpacker_derive::MsgPacker;
 
+/// Packs the provided packable value into a vector.
+pub fn pack_to_vec<T>(value: &T) -> Vec<u8>
+where
+    T: Packable,
+{
+    let mut bytes = Vec::new();
+
+    value.pack(&mut bytes);
+
+    bytes
+}
+
 /// A packable type.
 pub trait Packable {
     /// Pack a value into the extendable buffer, returning the amount of written bytes.
     fn pack<T>(&self, buf: &mut T) -> usize
     where
         T: Extend<u8>;
+
+    /// Packs the value into a vector of bytes.
+    fn pack_to_vec<T>(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        self.pack(&mut bytes);
+
+        bytes
+    }
 }
 
-impl<'a, X> Packable for &'a X
+impl<X> Packable for &X
 where
     X: Packable,
 {
@@ -50,7 +71,7 @@ where
     }
 }
 
-impl<'a, X> Packable for &'a mut X
+impl<X> Packable for &mut X
 where
     X: Packable,
 {
