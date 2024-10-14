@@ -27,6 +27,7 @@ pub fn take_num<V, const N: usize>(buf: &mut &[u8], f: fn([u8; N]) -> V) -> Resu
     Ok(f(val))
 }
 
+#[cfg(feature = "alloc")]
 pub fn take_buffer<'a>(buf: &mut &'a [u8], len: usize) -> Result<&'a [u8], Error> {
     if buf.len() < len {
         return Err(Error::BufferTooShort);

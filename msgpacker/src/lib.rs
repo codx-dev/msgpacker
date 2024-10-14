@@ -27,19 +27,19 @@ pub use unpack::{unpack_array, unpack_array_iter, unpack_map, unpack_map_iter};
 #[cfg(feature = "alloc")]
 pub use extension::Extension;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(feature = "derive")]
 pub use msgpacker_derive::MsgPacker;
 
 /// Packs the provided packable value into a vector.
+#[cfg(feature = "alloc")]
 pub fn pack_to_vec<T>(value: &T) -> Vec<u8>
 where
     T: Packable,
 {
-    let mut bytes = Vec::new();
-
-    value.pack(&mut bytes);
-
-    bytes
+    value.pack_to_vec()
 }
 
 /// A packable type.
@@ -50,7 +50,8 @@ pub trait Packable {
         T: Extend<u8>;
 
     /// Packs the value into a vector of bytes.
-    fn pack_to_vec<T>(&self) -> Vec<u8> {
+    #[cfg(feature = "alloc")]
+    fn pack_to_vec(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
         self.pack(&mut bytes);

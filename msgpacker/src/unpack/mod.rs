@@ -1,5 +1,6 @@
 use super::{helpers, Error, Format, Unpackable};
 
+#[cfg(feature = "alloc")]
 mod binary;
 mod collections;
 mod common;

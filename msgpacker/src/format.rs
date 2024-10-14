@@ -21,6 +21,14 @@ impl Format {
     pub const STR8: u8 = 0xd9;
     pub const STR16: u8 = 0xda;
     pub const STR32: u8 = 0xdb;
+    pub const ARRAY16: u8 = 0xdc;
+    pub const ARRAY32: u8 = 0xdd;
+    pub const MAP16: u8 = 0xde;
+    pub const MAP32: u8 = 0xdf;
+}
+
+#[cfg(feature = "alloc")]
+impl Format {
     pub const FIXEXT1: u8 = 0xd4;
     pub const FIXEXT2: u8 = 0xd5;
     pub const FIXEXT4: u8 = 0xd6;
@@ -29,8 +37,4 @@ impl Format {
     pub const EXT8: u8 = 0xc7;
     pub const EXT16: u8 = 0xc8;
     pub const EXT32: u8 = 0xc9;
-    pub const ARRAY16: u8 = 0xdc;
-    pub const ARRAY32: u8 = 0xdd;
-    pub const MAP16: u8 = 0xde;
-    pub const MAP32: u8 = 0xdf;
 }
