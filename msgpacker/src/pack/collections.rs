@@ -1,18 +1,12 @@
 use super::{Format, Packable};
 use core::{borrow::Borrow, iter};
 
-/// Packs an array into the extendable buffer, returning the amount of written bytes.
-#[allow(unreachable_code)]
-pub fn pack_array<T, A, I, V>(buf: &mut T, iter: A) -> usize
-where
-    T: Extend<u8>,
-    A: IntoIterator<IntoIter = I>,
-    I: Iterator<Item = V> + ExactSizeIterator,
-    V: Packable,
+/// Writes the info for an array into the extendable buffer, returning the amount of written bytes.
+pub fn get_array_info<T>(buf: &mut T, len: usize) -> usize
+    where
+    T: Extend<u8>
 {
-    let values = iter.into_iter();
-    let len = values.len();
-    let n = if len <= 15 {
+    if len <= 15 {
         buf.extend(iter::once(((len & 0x0f) as u8) | 0x90));
         1
     } else if len <= u16::MAX as usize {
@@ -25,7 +19,22 @@ where
         #[cfg(feature = "strict")]
         panic!("strict serialization enabled; the buffer is too large");
         return 0;
-    };
+    }
+}
+
+/// Packs an array into the extendable buffer, returning the amount of written bytes.
+#[allow(unreachable_code)]
+pub fn pack_array<T, A, I, V>(buf: &mut T, iter: A) -> usize
+where
+    T: Extend<u8>,
+    A: IntoIterator<IntoIter = I>,
+    I: Iterator<Item = V> + ExactSizeIterator,
+    V: Packable,
+{
+    let values = iter.into_iter();
+    let len = values.len();
+
+    let n = get_array_info(buf, len);
     n + values.map(|v| v.pack(buf)).sum::<usize>()
 }
 

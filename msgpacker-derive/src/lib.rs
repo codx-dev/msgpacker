@@ -36,9 +36,11 @@ fn contains_attribute(field: &Field, name: &str) -> bool {
 
 fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
     let mut values: Punctuated<FieldValue, Token![,]> = Punctuated::new();
+    let field_len = f.named.len();
     let block_packable: Block = parse_quote! {
         {
             let mut n = 0;
+            n += ::msgpacker::get_array_info(buf, #field_len);
         }
     };
     let block_unpackable: Block = parse_quote! {
@@ -103,7 +105,9 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
                             t
                         })?;
                     });
-                } else if contains_attribute(&field, "array") || is_vec && !is_vec_u8 {
+                // todo, delete?
+                // } else if contains_attribute(&field, "array") || is_vec && !is_vec_u8 {
+                } else if contains_attribute(&field, "array") || is_vec {
                     block_packable.stmts.push(parse_quote! {
                         n += ::msgpacker::pack_array(buf, &self.#ident);
                     });
@@ -298,11 +302,11 @@ fn impl_fields_unnamed(name: Ident, f: FieldsUnnamed) -> impl Into<TokenStream> 
 fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
     quote! {
         impl ::msgpacker::Packable for #name {
-            fn pack<T>(&self, _buf: &mut T) -> usize
+            fn pack<T>(&self, buf: &mut T) -> usize
             where
                 T: Extend<u8>,
             {
-                0
+                ::msgpacker::get_array_info(buf, 0)
             }
         }
 

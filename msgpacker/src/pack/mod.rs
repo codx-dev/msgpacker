@@ -6,4 +6,4 @@ mod common;
 mod float;
 mod int;
 
-pub use collections::{pack_array, pack_map};
+pub use collections::{pack_array, pack_map, get_array_info};

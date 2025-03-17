@@ -11,7 +11,9 @@ repository = "https://github.com/codx-dev/msgpacker"
 description = "MessagePack protocol implementation for Rust."
 
 [dependencies]
-msgpacker-derive = { version = "0.3", optional = true }
+# todo, revert
+# msgpacker-derive = { version = "0.3", optional = true }
+msgpacker-derive = { version = "0.3", path = "../msgpacker-derive", optional = true }
 
 [dev-dependencies]
 proptest = "1.2"
