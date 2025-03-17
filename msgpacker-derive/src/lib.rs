@@ -105,8 +105,25 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
                             t
                         })?;
                     });
-                // todo, delete?
-                // } else if contains_attribute(&field, "array") || is_vec && !is_vec_u8 {
+                } else if contains_attribute(&field, "binary") && is_vec_u8 {
+                    block_packable.stmts.push(parse_quote! {
+                        n += ::msgpacker::pack_binary(buf, &self.#ident);
+                    });
+
+                    block_unpackable.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_array(buf).map(|(nv, t)| {
+                            n += nv;
+                            buf = &buf[nv..];
+                            t
+                        })?;
+                    });
+
+                    block_unpackable_iter.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_array_iter(bytes.by_ref()).map(|(nv, t)| {
+                            n += nv;
+                            t
+                        })?;
+                    });
                 } else if contains_attribute(&field, "array") || is_vec {
                     block_packable.stmts.push(parse_quote! {
                         n += ::msgpacker::pack_array(buf, &self.#ident);
