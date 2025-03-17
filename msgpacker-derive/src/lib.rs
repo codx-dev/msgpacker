@@ -46,6 +46,28 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
     let block_unpackable: Block = parse_quote! {
         {
             let mut n = 0;
+            let expected_len = #field_len;
+
+            let format = ::msgpacker::take_byte(&mut buf)?;
+
+            let (header_bytes, actual_len) = match format {
+                0x90..=0x9f => (1, (format & 0x0f) as usize),
+                ::msgpacker::Format::ARRAY16 => {
+                    let len = ::msgpacker::take_num(&mut buf, u16::from_be_bytes)? as usize;
+                    (3, len)
+                }
+                ::msgpacker::Format::ARRAY32 => {
+                    let len = ::msgpacker::take_num(&mut buf, u32::from_be_bytes)? as usize;
+                    (5, len)
+                }
+                _ => return Err(::msgpacker::Error::UnexpectedFormatTag.into()),
+            };
+
+            if actual_len != expected_len {
+                return Err(::msgpacker::Error::UnexpectedStructLength.into());
+            }
+
+            n += header_bytes;
         }
     };
     let block_unpackable_iter: Block = parse_quote! {
@@ -111,15 +133,15 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
                     });
 
                     block_unpackable.stmts.push(parse_quote! {
-                        let #ident = ::msgpacker::unpack_array(buf).map(|(nv, t)| {
+                        let #ident = ::msgpacker::unpack_bytes(buf).map(|(nv, t)| {
                             n += nv;
                             buf = &buf[nv..];
-                            t
+                            t.to_vec()
                         })?;
                     });
 
                     block_unpackable_iter.stmts.push(parse_quote! {
-                        let #ident = ::msgpacker::unpack_array_iter(bytes.by_ref()).map(|(nv, t)| {
+                        let #ident = ::msgpacker::unpack_bytes_iter(bytes.by_ref()).map(|(nv, t)| {
                             n += nv;
                             t
                         })?;

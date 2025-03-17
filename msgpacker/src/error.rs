@@ -15,6 +15,8 @@ pub enum Error {
     UnexpectedFormatTag,
     /// The provided bin length is not valid.
     UnexpectedBinLength,
+    /// The struct we're targeting does not match the data.
+    UnexpectedStructLength,
 }
 
 impl fmt::Display for Error {

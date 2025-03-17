@@ -10,6 +10,7 @@ use super::{
 use alloc::{string::String, vec::Vec};
 use core::str;
 
+/// Unpacks binary data from the buffer, returning a &[u8] and the amount of read bytes.
 pub fn unpack_bytes(mut buf: &[u8]) -> Result<(usize, &[u8]), Error> {
     let format = take_byte(&mut buf)?;
     let (n, len) = match format {
@@ -22,6 +23,32 @@ pub fn unpack_bytes(mut buf: &[u8]) -> Result<(usize, &[u8]), Error> {
         return Err(Error::BufferTooShort);
     }
     Ok((n + len, &buf[..len]))
+}
+
+/// Unpacks binary data from the iterator, returning a Vec<u8> and the amount of read bytes.
+pub fn unpack_bytes_iter<I>(bytes: I) -> Result<(usize, Vec<u8>), Error>
+where
+    I: IntoIterator<Item = u8>,
+{
+    let mut bytes = bytes.into_iter();
+    let format = take_byte_iter(bytes.by_ref())?;
+    let (n, len) = match format {
+        Format::BIN8 => (2, take_byte_iter(bytes.by_ref())? as usize),
+        Format::BIN16 => (
+            3,
+            take_num_iter(bytes.by_ref(), u16::from_be_bytes)? as usize,
+        ),
+        Format::BIN32 => (
+            5,
+            take_num_iter(bytes.by_ref(), u32::from_be_bytes)? as usize,
+        ),
+        _ => return Err(Error::UnexpectedFormatTag),
+    };
+    let v: Vec<_> = bytes.take(len).collect();
+    if v.len() < len {
+        return Err(Error::BufferTooShort);
+    }
+    Ok((n + len, v))
 }
 
 pub fn unpack_str(mut buf: &[u8]) -> Result<(usize, &str), Error> {
@@ -38,39 +65,6 @@ pub fn unpack_str(mut buf: &[u8]) -> Result<(usize, &str), Error> {
     }
     let str = str::from_utf8(&buf[..len]).map_err(|_| Error::InvalidUtf8)?;
     Ok((n + len, str))
-}
-
-impl Unpackable for Vec<u8> {
-    type Error = Error;
-
-    fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-        unpack_bytes(buf).map(|(n, b)| (n, b.to_vec()))
-    }
-
-    fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
-    where
-        I: IntoIterator<Item = u8>,
-    {
-        let mut bytes = bytes.into_iter();
-        let format = take_byte_iter(bytes.by_ref())?;
-        let (n, len) = match format {
-            Format::BIN8 => (2, take_byte_iter(bytes.by_ref())? as usize),
-            Format::BIN16 => (
-                3,
-                take_num_iter(bytes.by_ref(), u16::from_be_bytes)? as usize,
-            ),
-            Format::BIN32 => (
-                5,
-                take_num_iter(bytes.by_ref(), u32::from_be_bytes)? as usize,
-            ),
-            _ => return Err(Error::UnexpectedFormatTag),
-        };
-        let v: Vec<_> = bytes.take(len).collect();
-        if v.len() < len {
-            return Err(Error::BufferTooShort);
-        }
-        Ok((n + len, v))
-    }
 }
 
 impl Unpackable for String {
