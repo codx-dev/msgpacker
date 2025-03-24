@@ -3,8 +3,8 @@ use core::{borrow::Borrow, iter};
 
 /// Writes the info for an array into the extendable buffer, returning the amount of written bytes.
 pub fn get_array_info<T>(buf: &mut T, len: usize) -> usize
-    where
-    T: Extend<u8>
+where
+    T: Extend<u8>,
 {
     if len <= 15 {
         buf.extend(iter::once(((len & 0x0f) as u8) | 0x90));
@@ -136,6 +136,18 @@ mod alloc {
             T: Extend<u8>,
         {
             pack_map(buf, self)
+        }
+    }
+
+    impl<X> Packable for Vec<X>
+    where
+        X: Packable,
+    {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_array(buf, self)
         }
     }
 }

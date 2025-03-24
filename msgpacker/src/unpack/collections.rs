@@ -230,6 +230,24 @@ mod alloc {
             unpack_map_iter(bytes)
         }
     }
+
+    impl<X> Unpackable for Vec<X>
+    where
+        X: Unpackable,
+    {
+        type Error = <X as Unpackable>::Error;
+
+        fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+            unpack_array(buf)
+        }
+
+        fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+        where
+            I: IntoIterator<Item = u8>,
+        {
+            unpack_array_iter(bytes)
+        }
+    }
 }
 
 #[cfg(feature = "std")]

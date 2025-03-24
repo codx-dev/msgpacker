@@ -17,8 +17,10 @@ mod unpack;
 pub use error::Error;
 pub use format::Format;
 pub use helpers::{take_byte, take_num};
-pub use pack::{pack_array, pack_map, get_array_info, pack_binary};
-pub use unpack::{unpack_array, unpack_array_iter, unpack_map, unpack_map_iter, unpack_bytes, unpack_bytes_iter};
+pub use pack::{get_array_info, pack_array, pack_binary, pack_map};
+pub use unpack::{
+    unpack_array, unpack_array_iter, unpack_bytes, unpack_bytes_iter, unpack_map, unpack_map_iter,
+};
 
 #[cfg(feature = "alloc")]
 pub use extension::Extension;
