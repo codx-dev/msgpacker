@@ -17,6 +17,8 @@ pub enum Error {
     UnexpectedBinLength,
     /// The struct we're targeting does not match the data.
     UnexpectedStructLength,
+    /// The array we're targeting does not match the data.
+    UnexpectedArrayLength,
 }
 
 impl fmt::Display for Error {

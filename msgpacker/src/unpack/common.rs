@@ -1,5 +1,5 @@
 use super::{
-    helpers::{take_byte, take_byte_iter},
+    helpers::{take_byte, take_byte_iter, take_num, take_num_iter},
     Error, Format, Unpackable,
 };
 use core::{marker::PhantomData, mem::MaybeUninit};
@@ -98,7 +98,26 @@ macro_rules! array {
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
                 let mut array = [const { MaybeUninit::uninit() }; $n];
-                let n =
+
+                let format = take_byte(&mut buf)?;
+                let (mut n, len) = match format {
+                    0x90..=0x9f => (1, (format & 0x0f) as usize),
+                    Format::ARRAY16 => (
+                        3,
+                        take_num(&mut buf, u16::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    Format::ARRAY32 => (
+                        5,
+                        take_num(&mut buf, u32::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+
+                if len != $n {
+                    return Err(Error::UnexpectedArrayLength.into())
+                }
+
+                n += 
                     array
                         .iter_mut()
                         .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
@@ -122,6 +141,25 @@ macro_rules! array {
             {
                 let mut bytes = bytes.into_iter();
                 let mut array = [const { MaybeUninit::uninit() }; $n];
+
+                let format = take_byte_iter(bytes.by_ref())?;
+                let (_, len) = match format {
+                    0x90..=0x9f => (1, (format & 0x0f) as usize),
+                    Format::ARRAY16 => (
+                        3,
+                        take_num_iter(bytes.by_ref(), u16::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    Format::ARRAY32 => (
+                        5,
+                        take_num_iter(bytes.by_ref(), u32::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+
+                if len != $n {
+                    return Err(Error::UnexpectedArrayLength.into())
+                }
+
                 let n =
                     array
                         .iter_mut()

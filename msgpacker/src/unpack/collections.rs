@@ -22,6 +22,7 @@ where
         ),
         _ => return Err(Error::UnexpectedFormatTag.into()),
     };
+
     let array: C = (0..len)
         .map(|_| {
             let (count, v) = V::unpack(buf)?;

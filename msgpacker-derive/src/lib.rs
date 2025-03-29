@@ -353,14 +353,25 @@ fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
             type Error = ::msgpacker::Error;
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-                Ok((0, Self))
+                let format = ::msgpacker::take_byte(&mut buf)?;
+                let (_, len) = match format {
+                    0x90 => (1, 0),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+                Ok((1, Self))
             }
 
             fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
             where
                 I: IntoIterator<Item = u8>,
             {
-                Ok((0, Self))
+                let mut bytes = bytes.into_iter();
+                let format = ::msgpacker::take_byte_iter(bytes.by_ref())?;
+                let (_, len) = match format {
+                    0x90 => (1, 0),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+                Ok((1, Self))
             }
         }
     }
