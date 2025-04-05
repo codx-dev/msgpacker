@@ -142,7 +142,7 @@ macro_rules! array {
                 let mut array = [const { MaybeUninit::uninit() }; $n];
 
                 let format = take_byte_iter(bytes.by_ref())?;
-                let (_, len) = match format {
+                let (mut n, len) = match format {
                     0x90..=0x9f => (1, (format & 0x0f) as usize),
                     Format::ARRAY16 => (
                         3,
@@ -159,7 +159,7 @@ macro_rules! array {
                     return Err(Error::UnexpectedArrayLength.into());
                 }
 
-                let n =
+                n +=
                     array
                         .iter_mut()
                         .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
