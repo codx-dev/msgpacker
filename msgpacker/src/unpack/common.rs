@@ -114,18 +114,17 @@ macro_rules! array {
                 };
 
                 if len != $n {
-                    return Err(Error::UnexpectedArrayLength.into())
+                    return Err(Error::UnexpectedArrayLength.into());
                 }
 
-                n += 
-                    array
-                        .iter_mut()
-                        .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
-                            let (n, x) = X::unpack(buf)?;
-                            buf = &buf[n..];
-                            a.write(x);
-                            Ok(count + n)
-                        })?;
+                n += array
+                    .iter_mut()
+                    .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
+                        let (n, x) = X::unpack(buf)?;
+                        buf = &buf[n..];
+                        a.write(x);
+                        Ok(count + n)
+                    })?;
                 // Safety: array is initialized
                 let array = ::core::array::from_fn(|i| {
                     let mut x = MaybeUninit::zeroed();
@@ -157,7 +156,7 @@ macro_rules! array {
                 };
 
                 if len != $n {
-                    return Err(Error::UnexpectedArrayLength.into())
+                    return Err(Error::UnexpectedArrayLength.into());
                 }
 
                 let n =

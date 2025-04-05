@@ -5,7 +5,7 @@ mod utils;
 
 #[test]
 fn empty_vec() {
-    let v = vec![];
+    let v: Vec<u8> = vec![];
     let mut bytes = vec![];
     let n = v.pack(&mut bytes);
     let (o, x) = Vec::<u8>::unpack(&bytes).unwrap();

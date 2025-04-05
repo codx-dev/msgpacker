@@ -74,6 +74,24 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
         {
             let mut bytes = bytes.into_iter();
             let mut n = 0;
+            let expected_len = #field_len;
+            let format = ::msgpacker::take_byte_iter(bytes.by_ref())?;
+            let (header_bytes, actual_len) = match format {
+                0x90..=0x9f => (1, (format & 0x0f) as usize),
+                ::msgpacker::Format::ARRAY16 => {
+                    let len = ::msgpacker::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
+                    (3, len)
+                }
+                ::msgpacker::Format::ARRAY32 => {
+                    let len = ::msgpacker::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
+                    (5, len)
+                }
+                _ => return Err(::msgpacker::Error::UnexpectedFormatTag.into()),
+            };
+            if actual_len != expected_len {
+                return Err(::msgpacker::Error::UnexpectedStructLength.into());
+            }
+            n += header_bytes;
         }
     };
 
