@@ -13,10 +13,10 @@ where
         buf.extend(iter::once(Format::BIN8).chain(iter::once(len as u8)));
         2
     } else if len <= u16::MAX as usize {
-        buf.extend(iter::once(Format::BIN16).chain(len.to_be_bytes()));
+        buf.extend(iter::once(Format::BIN16).chain((len as u16).to_be_bytes()));
         3
     } else if len <= u32::MAX as usize {
-        buf.extend(iter::once(Format::BIN32).chain(len.to_be_bytes()));
+        buf.extend(iter::once(Format::BIN32).chain((len as u32).to_be_bytes()));
         5
     } else {
         #[cfg(feature = "strict")]
