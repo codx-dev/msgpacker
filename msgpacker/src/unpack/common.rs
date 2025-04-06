@@ -3,6 +3,7 @@ use super::{
     Error, Format, Unpackable,
 };
 use core::{marker::PhantomData, mem::MaybeUninit};
+use std::ptr;
 
 impl Unpackable for () {
     type Error = Error;
@@ -126,11 +127,7 @@ macro_rules! array {
                         Ok(count + n)
                     })?;
                 // Safety: array is initialized
-                let array = ::core::array::from_fn(|i| {
-                    let mut x = MaybeUninit::zeroed();
-                    ::core::mem::swap(&mut array[i], &mut x);
-                    unsafe { MaybeUninit::assume_init(x) }
-                });
+                let array = unsafe { ptr::read(&array as *const _ as *const [X; $n]) };
                 Ok((n, array))
             }
 
@@ -167,11 +164,7 @@ macro_rules! array {
                         Ok(count + n)
                     })?;
                 // Safety: array is initialized
-                let array = ::core::array::from_fn(|i| {
-                    let mut x = MaybeUninit::zeroed();
-                    ::core::mem::swap(&mut array[i], &mut x);
-                    unsafe { MaybeUninit::assume_init(x) }
-                });
+                let array = unsafe { ptr::read(&array as *const _ as *const [X; $n]) };
                 Ok((n, array))
             }
         }
