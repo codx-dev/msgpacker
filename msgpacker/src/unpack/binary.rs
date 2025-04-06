@@ -11,7 +11,7 @@ use alloc::{string::String, vec::Vec};
 use core::str;
 
 /// Unpacks binary data from the buffer, returning a &[u8] and the amount of read bytes.
-pub fn unpack_bytes(mut buf: &[u8]) -> Result<(usize, &[u8]), Error> {
+pub fn unpack_binary(mut buf: &[u8]) -> Result<(usize, &[u8]), Error> {
     let format = take_byte(&mut buf)?;
     let (n, len) = match format {
         Format::BIN8 => (2, take_byte(&mut buf)? as usize),
@@ -26,7 +26,7 @@ pub fn unpack_bytes(mut buf: &[u8]) -> Result<(usize, &[u8]), Error> {
 }
 
 /// Unpacks binary data from the iterator, returning a Vec<u8> and the amount of read bytes.
-pub fn unpack_bytes_iter<I>(bytes: I) -> Result<(usize, Vec<u8>), Error>
+pub fn unpack_binary_iter<I>(bytes: I) -> Result<(usize, Vec<u8>), Error>
 where
     I: IntoIterator<Item = u8>,
 {
