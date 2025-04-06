@@ -40,7 +40,7 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
     let block_packable: Block = parse_quote! {
         {
             let mut n = 0;
-            n += ::msgpacker::get_array_info(buf, #field_len);
+            n += ::msgpacker::derive_util::get_array_info(buf, #field_len);
         }
     };
     let block_unpackable: Block = parse_quote! {
@@ -48,16 +48,16 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
             let mut n = 0;
             let expected_len = #field_len;
 
-            let format = ::msgpacker::take_byte(&mut buf)?;
+            let format = ::msgpacker::derive_util::take_byte(&mut buf)?;
 
             let (header_bytes, actual_len) = match format {
                 0x90..=0x9f => (1, (format & 0x0f) as usize),
-                ::msgpacker::Format::ARRAY16 => {
-                    let len = ::msgpacker::take_num(&mut buf, u16::from_be_bytes)? as usize;
+                ::msgpacker::derive_util::Format::ARRAY16 => {
+                    let len = ::msgpacker::derive_util::take_num(&mut buf, u16::from_be_bytes)? as usize;
                     (3, len)
                 }
-                ::msgpacker::Format::ARRAY32 => {
-                    let len = ::msgpacker::take_num(&mut buf, u32::from_be_bytes)? as usize;
+                ::msgpacker::derive_util::Format::ARRAY32 => {
+                    let len = ::msgpacker::derive_util::take_num(&mut buf, u32::from_be_bytes)? as usize;
                     (5, len)
                 }
                 _ => return Err(::msgpacker::Error::UnexpectedFormatTag.into()),
@@ -75,15 +75,15 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
             let mut bytes = bytes.into_iter();
             let mut n = 0;
             let expected_len = #field_len;
-            let format = ::msgpacker::take_byte_iter(bytes.by_ref())?;
+            let format = ::msgpacker::derive_util::take_byte_iter(bytes.by_ref())?;
             let (header_bytes, actual_len) = match format {
                 0x90..=0x9f => (1, (format & 0x0f) as usize),
-                ::msgpacker::Format::ARRAY16 => {
-                    let len = ::msgpacker::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
+                ::msgpacker::derive_util::Format::ARRAY16 => {
+                    let len = ::msgpacker::derive_util::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
                     (3, len)
                 }
-                ::msgpacker::Format::ARRAY32 => {
-                    let len = ::msgpacker::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
+                ::msgpacker::derive_util::Format::ARRAY32 => {
+                    let len = ::msgpacker::derive_util::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
                     (5, len)
                 }
                 _ => return Err(::msgpacker::Error::UnexpectedFormatTag.into()),
@@ -363,7 +363,7 @@ fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
             where
                 T: Extend<u8>,
             {
-                ::msgpacker::get_array_info(buf, 0)
+                ::msgpacker::derive_util::get_array_info(buf, 0)
             }
         }
 
@@ -371,7 +371,7 @@ fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
             type Error = ::msgpacker::Error;
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-                let format = ::msgpacker::take_byte(&mut buf)?;
+                let format = ::msgpacker::derive_util::take_byte(&mut buf)?;
                 let (_, len) = match format {
                     0x90 => (1, 0),
                     _ => return Err(Error::UnexpectedFormatTag.into()),
@@ -384,7 +384,7 @@ fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
                 I: IntoIterator<Item = u8>,
             {
                 let mut bytes = bytes.into_iter();
-                let format = ::msgpacker::take_byte_iter(bytes.by_ref())?;
+                let format = ::msgpacker::derive_util::take_byte_iter(bytes.by_ref())?;
                 let (_, len) = match format {
                     0x90 => (1, 0),
                     _ => return Err(Error::UnexpectedFormatTag.into()),

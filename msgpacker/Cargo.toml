@@ -1,6 +1,6 @@
 [package]
 name = "msgpacker"
-version = "0.4.7"
+version = "0.5.0"
 authors = ["Victor Lopez <victor@codx.io>"]
 categories = ["compression", "encoding", "parser-implementations"]
 edition = "2021"
@@ -11,9 +11,7 @@ repository = "https://github.com/codx-dev/msgpacker"
 description = "MessagePack protocol implementation for Rust."
 
 [dependencies]
-# todo, revert
-# msgpacker-derive = { version = "0.3", optional = true }
-msgpacker-derive = { version = "0.3", path = "../msgpacker-derive", optional = true }
+msgpacker-derive = { path = "../msgpacker-derive", optional = true }
 
 [dev-dependencies]
 proptest = "1.2"

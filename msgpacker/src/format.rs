@@ -1,3 +1,4 @@
+/// A container for the Format constants
 pub struct Format {}
 
 impl Format {
