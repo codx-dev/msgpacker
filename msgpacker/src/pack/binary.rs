@@ -68,4 +68,13 @@ mod alloc {
             self.as_str().pack(buf)
         }
     }
+
+    impl Packable for Box<[u8]> {
+        fn pack<T>(&self, buf: &mut T) -> usize
+        where
+            T: Extend<u8>,
+        {
+            pack_binary(buf, self)
+        }
+    }
 }

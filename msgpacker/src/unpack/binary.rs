@@ -101,3 +101,36 @@ impl Unpackable for String {
         Ok((n + len, s))
     }
 }
+
+impl Unpackable for Box<[u8]> {
+    type Error = Error;
+
+    fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+        unpack_binary(buf).map(|(n, b)| (n, b.to_vec().into_boxed_slice()))
+    }
+
+    fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        let mut bytes = bytes.into_iter();
+        let format = take_byte_iter(bytes.by_ref())?;
+        let (n, len) = match format {
+            Format::BIN8 => (2, take_byte_iter(bytes.by_ref())? as usize),
+            Format::BIN16 => (
+                3,
+                take_num_iter(bytes.by_ref(), u16::from_be_bytes)? as usize,
+            ),
+            Format::BIN32 => (
+                5,
+                take_num_iter(bytes.by_ref(), u32::from_be_bytes)? as usize,
+            ),
+            _ => return Err(Error::UnexpectedFormatTag),
+        };
+        let v: Vec<_> = bytes.take(len).collect();
+        if v.len() < len {
+            return Err(Error::BufferTooShort);
+        }
+        Ok((n + len, v.into_boxed_slice()))
+    }
+}
