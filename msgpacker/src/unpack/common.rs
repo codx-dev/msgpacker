@@ -97,7 +97,7 @@ macro_rules! array {
             type Error = <X as Unpackable>::Error;
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-                let mut array = MaybeUninit::uninit_array();
+                let mut array = ::core::array::from_fn(|_| MaybeUninit::uninit());
                 let n =
                     array
                         .iter_mut()
@@ -117,7 +117,7 @@ macro_rules! array {
                 I: IntoIterator<Item = u8>,
             {
                 let mut bytes = bytes.into_iter();
-                let mut array = MaybeUninit::uninit_array();
+                let mut array = ::core::array::from_fn(|_| MaybeUninit::uninit());
                 let n =
                     array
                         .iter_mut()
