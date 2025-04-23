@@ -97,7 +97,7 @@ macro_rules! array {
             type Error = <X as Unpackable>::Error;
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-                let mut array = ::core::array::from_fn(|_| MaybeUninit::uninit());
+                let mut array = [const { MaybeUninit::uninit() }; $n];
                 let n =
                     array
                         .iter_mut()
@@ -108,7 +108,11 @@ macro_rules! array {
                             Ok(count + n)
                         })?;
                 // Safety: array is initialized
-                let array = unsafe { MaybeUninit::array_assume_init(array) };
+                let array = ::core::array::from_fn(|i| {
+                    let mut x = MaybeUninit::zeroed();
+                    ::core::mem::swap(&mut array[i], &mut x);
+                    unsafe { MaybeUninit::assume_init(x) }
+                });
                 Ok((n, array))
             }
 
@@ -117,7 +121,7 @@ macro_rules! array {
                 I: IntoIterator<Item = u8>,
             {
                 let mut bytes = bytes.into_iter();
-                let mut array = ::core::array::from_fn(|_| MaybeUninit::uninit());
+                let mut array = [const { MaybeUninit::uninit() }; $n];
                 let n =
                     array
                         .iter_mut()
@@ -127,7 +131,11 @@ macro_rules! array {
                             Ok(count + n)
                         })?;
                 // Safety: array is initialized
-                let array = unsafe { MaybeUninit::array_assume_init(array) };
+                let array = ::core::array::from_fn(|i| {
+                    let mut x = MaybeUninit::zeroed();
+                    ::core::mem::swap(&mut array[i], &mut x);
+                    unsafe { MaybeUninit::assume_init(x) }
+                });
                 Ok((n, array))
             }
         }

@@ -41,11 +41,23 @@ pub fn take_num_iter<I, V, const N: usize>(bytes: I, f: fn([u8; N]) -> V) -> Res
 where
     I: Iterator<Item = u8>,
 {
-    bytes
-        .array_chunks()
-        .next()
-        .ok_or(Error::BufferTooShort)
-        .map(f)
+    let mut array = [0u8; N];
+    let mut i = 0;
+
+    for b in bytes {
+        array[i] = b;
+        i += 1;
+
+        if i == N {
+            break;
+        }
+    }
+
+    if i < N {
+        return Err(Error::BufferTooShort);
+    }
+
+    Ok(f(array))
 }
 
 #[cfg(feature = "alloc")]

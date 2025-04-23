@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(iter_array_chunks, maybe_uninit_array_assume_init)]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
