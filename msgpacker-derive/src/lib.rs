@@ -36,20 +36,62 @@ fn contains_attribute(field: &Field, name: &str) -> bool {
 
 fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
     let mut values: Punctuated<FieldValue, Token![,]> = Punctuated::new();
+    let field_len = f.named.len();
     let block_packable: Block = parse_quote! {
         {
             let mut n = 0;
+            n += ::msgpacker::derive_util::get_array_info(buf, #field_len);
         }
     };
     let block_unpackable: Block = parse_quote! {
         {
             let mut n = 0;
+            let expected_len = #field_len;
+
+            let format = ::msgpacker::derive_util::take_byte(&mut buf)?;
+
+            let (header_bytes, actual_len) = match format {
+                0x90..=0x9f => (1, (format & 0x0f) as usize),
+                ::msgpacker::derive_util::Format::ARRAY16 => {
+                    let len = ::msgpacker::derive_util::take_num(&mut buf, u16::from_be_bytes)? as usize;
+                    (3, len)
+                }
+                ::msgpacker::derive_util::Format::ARRAY32 => {
+                    let len = ::msgpacker::derive_util::take_num(&mut buf, u32::from_be_bytes)? as usize;
+                    (5, len)
+                }
+                _ => return Err(::msgpacker::Error::UnexpectedFormatTag.into()),
+            };
+
+            if actual_len != expected_len {
+                return Err(::msgpacker::Error::UnexpectedStructLength.into());
+            }
+
+            n += header_bytes;
         }
     };
     let block_unpackable_iter: Block = parse_quote! {
         {
             let mut bytes = bytes.into_iter();
             let mut n = 0;
+            let expected_len = #field_len;
+            let format = ::msgpacker::derive_util::take_byte_iter(bytes.by_ref())?;
+            let (header_bytes, actual_len) = match format {
+                0x90..=0x9f => (1, (format & 0x0f) as usize),
+                ::msgpacker::derive_util::Format::ARRAY16 => {
+                    let len = ::msgpacker::derive_util::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
+                    (3, len)
+                }
+                ::msgpacker::derive_util::Format::ARRAY32 => {
+                    let len = ::msgpacker::derive_util::take_num_iter(&mut bytes, u16::from_be_bytes)? as usize;
+                    (5, len)
+                }
+                _ => return Err(::msgpacker::Error::UnexpectedFormatTag.into()),
+            };
+            if actual_len != expected_len {
+                return Err(::msgpacker::Error::UnexpectedStructLength.into());
+            }
+            n += header_bytes;
         }
     };
 
@@ -103,7 +145,26 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
                             t
                         })?;
                     });
-                } else if contains_attribute(&field, "array") || is_vec && !is_vec_u8 {
+                } else if contains_attribute(&field, "binary") && is_vec_u8 {
+                    block_packable.stmts.push(parse_quote! {
+                        n += ::msgpacker::pack_binary(buf, &self.#ident);
+                    });
+
+                    block_unpackable.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_bytes(buf).map(|(nv, t)| {
+                            n += nv;
+                            buf = &buf[nv..];
+                            t.to_vec()
+                        })?;
+                    });
+
+                    block_unpackable_iter.stmts.push(parse_quote! {
+                        let #ident = ::msgpacker::unpack_bytes_iter(bytes.by_ref()).map(|(nv, t)| {
+                            n += nv;
+                            t
+                        })?;
+                    });
+                } else if contains_attribute(&field, "array") || is_vec {
                     block_packable.stmts.push(parse_quote! {
                         n += ::msgpacker::pack_array(buf, &self.#ident);
                     });
@@ -298,11 +359,11 @@ fn impl_fields_unnamed(name: Ident, f: FieldsUnnamed) -> impl Into<TokenStream> 
 fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
     quote! {
         impl ::msgpacker::Packable for #name {
-            fn pack<T>(&self, _buf: &mut T) -> usize
+            fn pack<T>(&self, buf: &mut T) -> usize
             where
                 T: Extend<u8>,
             {
-                0
+                ::msgpacker::derive_util::get_array_info(buf, 0)
             }
         }
 
@@ -310,14 +371,25 @@ fn impl_fields_unit(name: Ident) -> impl Into<TokenStream> {
             type Error = ::msgpacker::Error;
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-                Ok((0, Self))
+                let format = ::msgpacker::derive_util::take_byte(&mut buf)?;
+                let (_, len) = match format {
+                    0x90 => (1, 0),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+                Ok((1, Self))
             }
 
             fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
             where
                 I: IntoIterator<Item = u8>,
             {
-                Ok((0, Self))
+                let mut bytes = bytes.into_iter();
+                let format = ::msgpacker::derive_util::take_byte_iter(bytes.by_ref())?;
+                let (_, len) = match format {
+                    0x90 => (1, 0),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+                Ok((1, Self))
             }
         }
     }

@@ -1,12 +1,6 @@
 use super::Error;
 
-pub fn take_byte_iter<I>(mut bytes: I) -> Result<u8, Error>
-where
-    I: Iterator<Item = u8>,
-{
-    bytes.next().ok_or(Error::BufferTooShort)
-}
-
+/// Take one byte off the provided buffer, advance the pointer, or error.
 pub fn take_byte(buf: &mut &[u8]) -> Result<u8, Error> {
     if buf.is_empty() {
         return Err(Error::BufferTooShort);
@@ -16,6 +10,15 @@ pub fn take_byte(buf: &mut &[u8]) -> Result<u8, Error> {
     Ok(l[0])
 }
 
+/// Take one byte from the iterator or error.
+pub fn take_byte_iter<I>(mut bytes: I) -> Result<u8, Error>
+where
+    I: Iterator<Item = u8>,
+{
+    bytes.next().ok_or(Error::BufferTooShort)
+}
+
+/// Read bytes off the buffer, using the provided function, or error.
 pub fn take_num<V, const N: usize>(buf: &mut &[u8], f: fn([u8; N]) -> V) -> Result<V, Error> {
     if buf.len() < N {
         return Err(Error::BufferTooShort);
@@ -27,6 +30,18 @@ pub fn take_num<V, const N: usize>(buf: &mut &[u8], f: fn([u8; N]) -> V) -> Resu
     Ok(f(val))
 }
 
+/// Read a number off the iterator, using the provided function, or error.
+pub fn take_num_iter<I, V, const N: usize>(mut bytes: I, f: fn([u8; N]) -> V) -> Result<V, Error>
+where
+    I: Iterator<Item = u8>,
+{
+    let mut array = [0u8; N]; // Initialize with zeroes
+    for byte in array.iter_mut() {
+        *byte = bytes.next().ok_or(Error::BufferTooShort)?;
+    }
+    Ok(f(array))
+}
+
 #[cfg(feature = "alloc")]
 pub fn take_buffer<'a>(buf: &mut &'a [u8], len: usize) -> Result<&'a [u8], Error> {
     if buf.len() < len {
@@ -35,29 +50,6 @@ pub fn take_buffer<'a>(buf: &mut &'a [u8], len: usize) -> Result<&'a [u8], Error
     let (l, r) = buf.split_at(len);
     *buf = r;
     Ok(l)
-}
-
-pub fn take_num_iter<I, V, const N: usize>(bytes: I, f: fn([u8; N]) -> V) -> Result<V, Error>
-where
-    I: Iterator<Item = u8>,
-{
-    let mut array = [0u8; N];
-    let mut i = 0;
-
-    for b in bytes {
-        array[i] = b;
-        i += 1;
-
-        if i == N {
-            break;
-        }
-    }
-
-    if i < N {
-        return Err(Error::BufferTooShort);
-    }
-
-    Ok(f(array))
 }
 
 #[cfg(feature = "alloc")]

@@ -1,8 +1,9 @@
 use super::{
-    helpers::{take_byte, take_byte_iter},
+    helpers::{take_byte, take_byte_iter, take_num, take_num_iter},
     Error, Format, Unpackable,
 };
 use core::{marker::PhantomData, mem::MaybeUninit};
+use std::ptr;
 
 impl Unpackable for () {
     type Error = Error;
@@ -98,21 +99,35 @@ macro_rules! array {
 
             fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
                 let mut array = [const { MaybeUninit::uninit() }; $n];
-                let n =
-                    array
-                        .iter_mut()
-                        .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
-                            let (n, x) = X::unpack(buf)?;
-                            buf = &buf[n..];
-                            a.write(x);
-                            Ok(count + n)
-                        })?;
+
+                let format = take_byte(&mut buf)?;
+                let (mut n, len) = match format {
+                    0x90..=0x9f => (1, (format & 0x0f) as usize),
+                    Format::ARRAY16 => (
+                        3,
+                        take_num(&mut buf, u16::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    Format::ARRAY32 => (
+                        5,
+                        take_num(&mut buf, u32::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+
+                if len != $n {
+                    return Err(Error::UnexpectedArrayLength.into());
+                }
+
+                n += array
+                    .iter_mut()
+                    .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
+                        let (n, x) = X::unpack(buf)?;
+                        buf = &buf[n..];
+                        a.write(x);
+                        Ok(count + n)
+                    })?;
                 // Safety: array is initialized
-                let array = ::core::array::from_fn(|i| {
-                    let mut x = MaybeUninit::zeroed();
-                    ::core::mem::swap(&mut array[i], &mut x);
-                    unsafe { MaybeUninit::assume_init(x) }
-                });
+                let array = unsafe { ptr::read(&array as *const _ as *const [X; $n]) };
                 Ok((n, array))
             }
 
@@ -122,20 +137,34 @@ macro_rules! array {
             {
                 let mut bytes = bytes.into_iter();
                 let mut array = [const { MaybeUninit::uninit() }; $n];
-                let n =
-                    array
-                        .iter_mut()
-                        .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
-                            let (n, x) = X::unpack_iter(bytes.by_ref())?;
-                            a.write(x);
-                            Ok(count + n)
-                        })?;
+
+                let format = take_byte_iter(bytes.by_ref())?;
+                let (mut n, len) = match format {
+                    0x90..=0x9f => (1, (format & 0x0f) as usize),
+                    Format::ARRAY16 => (
+                        3,
+                        take_num_iter(bytes.by_ref(), u16::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    Format::ARRAY32 => (
+                        5,
+                        take_num_iter(bytes.by_ref(), u32::from_be_bytes).map(|v| v as usize)?,
+                    ),
+                    _ => return Err(Error::UnexpectedFormatTag.into()),
+                };
+
+                if len != $n {
+                    return Err(Error::UnexpectedArrayLength.into());
+                }
+
+                n += array
+                    .iter_mut()
+                    .try_fold::<_, _, Result<_, Self::Error>>(0, |count, a| {
+                        let (n, x) = X::unpack_iter(bytes.by_ref())?;
+                        a.write(x);
+                        Ok(count + n)
+                    })?;
                 // Safety: array is initialized
-                let array = ::core::array::from_fn(|i| {
-                    let mut x = MaybeUninit::zeroed();
-                    ::core::mem::swap(&mut array[i], &mut x);
-                    unsafe { MaybeUninit::assume_init(x) }
-                });
+                let array = unsafe { ptr::read(&array as *const _ as *const [X; $n]) };
                 Ok((n, array))
             }
         }

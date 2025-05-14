@@ -1,4 +1,4 @@
-use super::{Format, Packable};
+use super::{get_array_info, Format, Packable};
 use core::{iter, marker::PhantomData};
 
 impl Packable for () {
@@ -61,7 +61,9 @@ macro_rules! array {
             where
                 T: Extend<u8>,
             {
-                self.iter().map(|t| t.pack(buf)).sum()
+                let len = self.len();
+                let n = get_array_info(buf, len);
+                n + self.iter().map(|t| t.pack(buf)).sum::<usize>()
             }
         }
     };

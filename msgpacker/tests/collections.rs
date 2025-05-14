@@ -50,6 +50,19 @@ proptest! {
     }
 
     #[test]
+    fn slice(value: [Value;8]) {
+        let mut bytes = Vec::new();
+        let n = msgpacker::pack_array(&mut bytes, &value);
+        assert_eq!(n, bytes.len());
+        let (o, x): (usize, Vec<Value>) = msgpacker::unpack_array(&bytes).unwrap();
+        let (p, y): (usize, Vec<Value>) = msgpacker::unpack_array_iter(bytes).unwrap();
+        assert_eq!(n, o);
+        assert_eq!(n, p);
+        assert_eq!(value, x.as_slice());
+        assert_eq!(value, y.as_slice());
+    }
+
+    #[test]
     fn map(map: HashMap<Value, Value>) {
         let mut bytes = Vec::new();
         let n = msgpacker::pack_map(&mut bytes, &map);

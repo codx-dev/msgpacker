@@ -16,8 +16,18 @@ mod unpack;
 
 pub use error::Error;
 use format::Format;
-pub use pack::{pack_array, pack_map};
-pub use unpack::{unpack_array, unpack_array_iter, unpack_map, unpack_map_iter};
+pub use pack::{pack_array, pack_binary, pack_map};
+pub use unpack::{
+    unpack_array, unpack_array_iter, unpack_binary, unpack_binary_iter, unpack_map, unpack_map_iter,
+};
+
+/// This module exposes some utility variables and functions for msgpacker-derive
+#[cfg(feature = "derive")]
+pub mod derive_util {
+    pub use crate::format::Format;
+    pub use crate::helpers::{take_byte, take_byte_iter, take_num, take_num_iter};
+    pub use crate::pack::get_array_info;
+}
 
 #[cfg(feature = "alloc")]
 pub use extension::Extension;

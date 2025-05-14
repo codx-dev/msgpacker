@@ -5,11 +5,11 @@ mod utils;
 
 #[test]
 fn empty_vec() {
-    let v = vec![];
+    let v: Vec<u8> = vec![];
     let mut bytes = vec![];
-    let n = v.pack(&mut bytes);
-    let (o, x) = Vec::<u8>::unpack(&bytes).unwrap();
-    let (p, y) = Vec::<u8>::unpack_iter(bytes).unwrap();
+    let n = msgpacker::pack_binary(&mut bytes, &v);
+    let (o, x) = msgpacker::unpack_binary(&bytes).unwrap();
+    let (p, y) = msgpacker::unpack_binary_iter(bytes.clone()).unwrap();
     assert_eq!(o, n);
     assert_eq!(p, n);
     assert_eq!(v, x);
@@ -30,6 +30,19 @@ fn empty_str() {
 }
 
 proptest! {
+    #[test]
+    fn slice(value: Box<[u8]>) {
+        let mut bytes = Vec::new();
+        let n = msgpacker::pack_binary(&mut bytes, &value);
+        assert_eq!(n, bytes.len());
+        let (o, x): (usize, &[u8]) = msgpacker::unpack_binary(&bytes).unwrap();
+        let (p, y): (usize, Vec<u8>) = msgpacker::unpack_binary_iter(bytes.clone()).unwrap();
+        assert_eq!(n, o);
+        assert_eq!(n, p);
+        assert_eq!(value, x.into());
+        assert_eq!(value, y.into());
+    }
+
     #[test]
     fn vec(v: Vec<u8>) {
         utils::case(v);
