@@ -373,7 +373,7 @@ fn impl_fields_enum(name: Ident, v: Punctuated<Variant, Token![,]>) -> impl Into
                         blk_unpack_fields.push(parse_quote! { #field });
 
                         blk_unpack.stmts.push(parse_quote! {
-                            let #field = Unpackable::unpack(buf).map(|(nv, t)| {
+                            let #field =::msgpacker::Unpackable::unpack(buf).map(|(nv, t)| {
                                 n += nv;
                                 buf = &buf[nv..];
                                 t
@@ -381,7 +381,7 @@ fn impl_fields_enum(name: Ident, v: Punctuated<Variant, Token![,]>) -> impl Into
                         });
 
                         blk_unpack_iter.stmts.push(parse_quote! {
-                            let #field = Unpackable::unpack_iter(bytes.by_ref()).map(|(nv, t)| {
+                            let #field =::msgpacker::Unpackable::unpack_iter(bytes.by_ref()).map(|(nv, t)| {
                                 n += nv;
                                 t
                             })?;
@@ -455,7 +455,7 @@ fn impl_fields_enum(name: Ident, v: Punctuated<Variant, Token![,]>) -> impl Into
                     });
 
                     blk_unpack.stmts.push(parse_quote! {
-                        let #ti = Unpackable::unpack(buf).map(|(nv, t)| {
+                        let #ti =::msgpacker::Unpackable::unpack(buf).map(|(nv, t)| {
                             n += nv;
                             buf = &buf[nv..];
                             t
@@ -463,7 +463,7 @@ fn impl_fields_enum(name: Ident, v: Punctuated<Variant, Token![,]>) -> impl Into
                     });
 
                     blk_unpack_iter.stmts.push(parse_quote! {
-                        let #ti = Unpackable::unpack_iter(bytes.by_ref()).map(|(nv, t)| {
+                        let #ti =::msgpacker::Unpackable::unpack_iter(bytes.by_ref()).map(|(nv, t)| {
                             n += nv;
                             t
                         })?;
