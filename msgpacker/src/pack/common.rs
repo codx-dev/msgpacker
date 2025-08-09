@@ -51,87 +51,17 @@ where
     }
 }
 
-macro_rules! array {
-    ($n:expr) => {
-        impl<X> Packable for [X; $n]
-        where
-            X: Packable,
-        {
-            fn pack<T>(&self, buf: &mut T) -> usize
-            where
-                T: Extend<u8>,
-            {
-                self.iter().map(|t| t.pack(buf)).sum()
-            }
-        }
-    };
+impl<X, const N: usize> Packable for [X; N]
+where
+    X: Packable,
+{
+    fn pack<T>(&self, buf: &mut T) -> usize
+    where
+        T: Extend<u8>,
+    {
+        self.iter().map(|t| t.pack(buf)).sum()
+    }
 }
-
-array!(0);
-array!(1);
-array!(2);
-array!(3);
-array!(4);
-array!(5);
-array!(6);
-array!(7);
-array!(8);
-array!(9);
-array!(10);
-array!(11);
-array!(12);
-array!(13);
-array!(14);
-array!(15);
-array!(16);
-array!(17);
-array!(18);
-array!(19);
-array!(20);
-array!(21);
-array!(22);
-array!(23);
-array!(24);
-array!(25);
-array!(26);
-array!(27);
-array!(28);
-array!(29);
-array!(30);
-array!(31);
-array!(32);
-array!(33);
-array!(34);
-array!(35);
-array!(36);
-array!(37);
-array!(38);
-array!(39);
-array!(40);
-array!(41);
-array!(42);
-array!(43);
-array!(44);
-array!(45);
-array!(46);
-array!(47);
-array!(48);
-array!(49);
-array!(50);
-array!(51);
-array!(52);
-array!(53);
-array!(54);
-array!(55);
-array!(56);
-array!(57);
-array!(58);
-array!(59);
-array!(60);
-array!(61);
-array!(62);
-array!(63);
-array!(64);
 
 macro_rules! tuple {
     ( $($name:ident)+) => (
