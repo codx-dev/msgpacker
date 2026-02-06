@@ -15,6 +15,8 @@ pub enum Error {
     UnexpectedFormatTag,
     /// The provided bin length is not valid.
     UnexpectedBinLength,
+    /// Not yet implemented.
+    NotImplemented,
 }
 
 impl fmt::Display for Error {

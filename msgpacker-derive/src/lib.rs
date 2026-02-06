@@ -18,16 +18,15 @@ fn contains_attribute(field: &Field, name: &str) -> bool {
     let name = name.to_string();
     if let Some(attr) = field.attrs.first() {
         if let Meta::List(list) = &attr.meta {
-            if list.path.is_ident("msgpacker") {
-                if list
+            if list.path.is_ident("msgpacker")
+                && list
                     .tokens
                     .clone()
                     .into_iter()
                     .find(|a| a.to_string() == name)
                     .is_some()
-                {
-                    return true;
-                }
+            {
+                return true;
             }
         }
     }
@@ -67,12 +66,12 @@ fn impl_fields_named(name: Ident, f: FieldsNamed) -> impl Into<TokenStream> {
                 let mut is_vec_u8 = false;
 
                 match &ty {
-                    Type::Path(p) if p.path.segments.last().filter(|p| p.ident.to_string() == "Vec").is_some() => {
+                    Type::Path(p) if p.path.segments.last().filter(|p| p.ident == "Vec").is_some() => {
                         is_vec = true;
                         match &p.path.segments.last().unwrap().arguments {
                             PathArguments::AngleBracketed(a) if a.args.len() == 1 => {
                                 if let Some(GenericArgument::Type(Type::Path(p))) = a.args.first() {
-                                    if p.path.segments.last().filter(|p| p.ident.to_string() == "u8").is_some() {
+                                    if p.path.segments.last().filter(|p| p.ident == "u8").is_some() {
                                         is_vec_u8 = true;
                                     }
                                 }

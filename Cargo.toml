@@ -1,10 +1,13 @@
 [workspace]
 resolver = "2"
-members = [
-    "msgpacker",
-    "msgpacker-bench",
-    "msgpacker-derive"
-]
+members = ["msgpacker", "msgpacker-bench", "msgpacker-derive"]
+
+[workspace.package]
+version = "0.5.0"
+authors = ["Victor Lopez <vhrlopes@gmail.com>"]
+edition = "2021"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/codx-dev/msgpacker"
 
 [profile.bench]
 lto = true
