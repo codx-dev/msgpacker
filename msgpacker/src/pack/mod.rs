@@ -1,7 +1,7 @@
 use super::{Format, Packable};
 
 mod binary;
-mod collections;
+pub(crate) mod collections;
 mod common;
 mod float;
 mod int;

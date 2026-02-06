@@ -3,14 +3,10 @@ use super::{
     Error, Format, Unpackable,
 };
 
-/// Unpacks an array from the buffer, returning a collectable type and the amount of read bytes.
-pub fn unpack_array<V, C>(mut buf: &[u8]) -> Result<(usize, C), <V as Unpackable>::Error>
-where
-    V: Unpackable,
-    C: FromIterator<V>,
-{
+/// Unpacks the array length from the buffer.
+pub fn unpack_array_len(mut buf: &[u8]) -> Result<(usize, usize), Error> {
     let format = take_byte(&mut buf)?;
-    let (mut n, len) = match format {
+    let (n, len) = match format {
         0x90..=0x9f => (1, (format & 0x0f) as usize),
         Format::ARRAY16 => (
             3,
@@ -22,6 +18,17 @@ where
         ),
         _ => return Err(Error::UnexpectedFormatTag.into()),
     };
+    Ok((n, len))
+}
+
+/// Unpacks an array from the buffer, returning a collectable type and the amount of read bytes.
+pub fn unpack_array<V, C>(mut buf: &[u8]) -> Result<(usize, C), <V as Unpackable>::Error>
+where
+    V: Unpackable,
+    C: FromIterator<V>,
+{
+    let (mut n, len) = unpack_array_len(buf)?;
+    buf = &buf[n..];
     let array: C = (0..len)
         .map(|_| {
             let (count, v) = V::unpack(buf)?;
@@ -64,16 +71,10 @@ where
     Ok((n, array))
 }
 
-/// Unpacks a map from the buffer, returning a collectable type and the amount of read bytes.
-pub fn unpack_map<K, V, C>(mut buf: &[u8]) -> Result<(usize, C), <V as Unpackable>::Error>
-where
-    K: Unpackable,
-    V: Unpackable,
-    <V as Unpackable>::Error: From<<K as Unpackable>::Error>,
-    C: FromIterator<(K, V)>,
-{
+/// Unpacks a map length from the buffer.
+pub fn unpack_map_len(mut buf: &[u8]) -> Result<(usize, usize), Error> {
     let format = take_byte(&mut buf)?;
-    let (mut n, len) = match format {
+    let (n, len) = match format {
         0x80..=0x8f => (1, (format & 0x0f) as usize),
         Format::MAP16 => (
             3,
@@ -85,6 +86,19 @@ where
         ),
         _ => return Err(Error::UnexpectedFormatTag.into()),
     };
+    Ok((n, len))
+}
+
+/// Unpacks a map from the buffer, returning a collectable type and the amount of read bytes.
+pub fn unpack_map<K, V, C>(mut buf: &[u8]) -> Result<(usize, C), <V as Unpackable>::Error>
+where
+    K: Unpackable,
+    V: Unpackable,
+    <V as Unpackable>::Error: From<<K as Unpackable>::Error>,
+    C: FromIterator<(K, V)>,
+{
+    let (mut n, len) = unpack_map_len(buf)?;
+    buf = &buf[n..];
     let map: C = (0..len)
         .map(|_| {
             let (count, k) = K::unpack(buf)?;

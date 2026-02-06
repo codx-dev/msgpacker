@@ -1,29 +1,40 @@
 [package]
 name = "msgpacker"
-version = "0.4.8"
-authors = ["Victor Lopez <vhrlopes@gmail.com>"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 categories = ["compression", "encoding", "parser-implementations"]
-edition = "2021"
 keywords = ["messagepack", "msgpack"]
-license = "MIT/Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/codx-dev/msgpacker"
 description = "MessagePack protocol implementation for Rust."
 
 [dependencies]
-msgpacker-derive = { version = "0.3", optional = true }
+msgpacker-derive = { path = "../msgpacker-derive", optional = true }
+serde = { version = "1.0", default-features = false, optional = true }
 
 [dev-dependencies]
-proptest = "1.2"
-proptest-derive = "0.3"
+arbitrary = "1.4"
+arbitrary-json = "0.1"
+msgpacker-derive.path = "../msgpacker-derive"
+proptest = "1.10"
+proptest-derive = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_bytes = "0.11"
+serde_json = "1.0"
 
 [features]
-default = ["std", "derive"]
-alloc = []
+default = ["derive", "std", "serde"]
+alloc = ["serde?/alloc"]
 derive = ["msgpacker-derive"]
 strict = []
-std = ["alloc"]
+std = ["alloc", "serde?/std"]
 
 [[test]]
 name = "collections"
 required-features = ["derive"]
+
+[[test]]
+name = "serde"
+required-features = ["alloc", "derive", "serde"]

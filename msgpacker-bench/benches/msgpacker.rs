@@ -1,4 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use std::hint::black_box;
+
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use msgpacker_bench::Value;
 use rand::{distributions::Standard, prelude::*};
 use rmp_serde::{decode::Deserializer, encode::Serializer};
@@ -14,11 +16,16 @@ pub fn pack(c: &mut Criterion) {
 
     // preallocate the required bytes
     let mut bufs_msgpacker = Vec::new();
+    let mut bufs_msgpacker_serde = Vec::new();
     let mut bufs_rmps = Vec::new();
     for count in counts {
         let mut buf = Vec::new();
         msgpacker::pack_array(&mut buf, values.iter().take(count));
         bufs_msgpacker.push(buf);
+
+        let mut buf = Vec::new();
+        msgpacker::serde::to_buffer(&mut buf, &values[..count]);
+        bufs_msgpacker_serde.push(buf);
 
         let mut buf = Vec::new();
         let mut serializer = Serializer::new(&mut buf);
@@ -36,6 +43,18 @@ pub fn pack(c: &mut Criterion) {
                 b.iter_batched(
                     || Vec::with_capacity(*buf),
                     |mut buf| msgpacker::pack_array(black_box(&mut buf), black_box(val.iter())),
+                    BatchSize::LargeInput,
+                );
+            },
+        );
+
+        group.bench_with_input(
+            format!("msgpacker serde {count}"),
+            &(&values[..*count], bufs_msgpacker_serde[i].capacity()),
+            |b, (val, buf)| {
+                b.iter_batched(
+                    || Vec::with_capacity(*buf),
+                    |mut buf| msgpacker::serde::to_buffer(black_box(&mut buf), val),
                     BatchSize::LargeInput,
                 );
             },
@@ -68,6 +87,14 @@ pub fn pack(c: &mut Criterion) {
             &bufs_msgpacker[i],
             |b, buf| {
                 b.iter(|| msgpacker::unpack_array::<Value, Vec<_>>(black_box(buf)));
+            },
+        );
+
+        group.bench_with_input(
+            format!("msgpacker serde {count}"),
+            &bufs_msgpacker_serde[i],
+            |b, buf| {
+                b.iter(|| msgpacker::serde::from_slice::<Vec<Value>>(black_box(buf)));
             },
         );
 

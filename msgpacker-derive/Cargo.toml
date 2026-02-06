@@ -1,13 +1,13 @@
 [package]
 name = "msgpacker-derive"
-version = "0.3.2"
-authors = ["Victor Lopez <vhrlopes@gmail.com>"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 categories = ["compression", "encoding", "parser-implementations"]
-edition = "2021"
 keywords = ["messagepack", "msgpack"]
-license = "MIT/Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/codx-dev/msgpacker"
 description = "Derive macros for the MessagePack protocol implementation for Rust."
 
 [lib]

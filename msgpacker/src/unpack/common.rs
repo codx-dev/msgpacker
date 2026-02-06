@@ -7,30 +7,48 @@ use core::{marker::PhantomData, mem::MaybeUninit};
 impl Unpackable for () {
     type Error = Error;
 
-    fn unpack(_buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-        Ok((0, ()))
+    fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+        let format = take_byte(&mut buf)?;
+        if format != Format::NIL {
+            return Err(Error::UnexpectedFormatTag);
+        }
+        Ok((1, ()))
     }
 
-    fn unpack_iter<I>(_buf: I) -> Result<(usize, Self), Self::Error>
+    fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
     where
         I: IntoIterator<Item = u8>,
     {
-        Ok((0, ()))
+        let mut bytes = bytes.into_iter();
+        let format = take_byte_iter(bytes.by_ref())?;
+        if format != Format::NIL {
+            return Err(Error::UnexpectedFormatTag);
+        }
+        Ok((1, ()))
     }
 }
 
 impl<X> Unpackable for PhantomData<X> {
     type Error = Error;
 
-    fn unpack(_buf: &[u8]) -> Result<(usize, Self), Self::Error> {
-        Ok((0, PhantomData))
+    fn unpack(mut buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+        let format = take_byte(&mut buf)?;
+        if format != Format::NIL {
+            return Err(Error::UnexpectedFormatTag);
+        }
+        Ok((1, PhantomData))
     }
 
-    fn unpack_iter<I>(_buf: I) -> Result<(usize, Self), Self::Error>
+    fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
     where
         I: IntoIterator<Item = u8>,
     {
-        Ok((0, PhantomData))
+        let mut bytes = bytes.into_iter();
+        let format = take_byte_iter(bytes.by_ref())?;
+        if format != Format::NIL {
+            return Err(Error::UnexpectedFormatTag);
+        }
+        Ok((1, PhantomData))
     }
 }
 
@@ -55,6 +73,23 @@ impl Unpackable for bool {
             return Err(Error::UnexpectedFormatTag);
         }
         Ok((1, format != Format::FALSE))
+    }
+}
+
+impl Unpackable for char {
+    type Error = Error;
+
+    fn unpack(buf: &[u8]) -> Result<(usize, Self), Self::Error> {
+        u32::unpack(buf)
+            .and_then(|(n, v)| char::from_u32(v).ok_or(Error::InvalidUtf8).map(|c| (n, c)))
+    }
+
+    fn unpack_iter<I>(bytes: I) -> Result<(usize, Self), Self::Error>
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        u32::unpack_iter(bytes)
+            .and_then(|(n, v)| char::from_u32(v).ok_or(Error::InvalidUtf8).map(|c| (n, c)))
     }
 }
 

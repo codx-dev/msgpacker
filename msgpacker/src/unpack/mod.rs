@@ -1,8 +1,7 @@
 use super::{helpers, Error, Format, Unpackable};
 
-#[cfg(feature = "alloc")]
-mod binary;
-mod collections;
+pub(crate) mod binary;
+pub(crate) mod collections;
 mod common;
 mod float;
 mod int;

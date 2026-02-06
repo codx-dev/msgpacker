@@ -11,8 +11,11 @@ mod extension;
 mod error;
 mod format;
 mod helpers;
-mod pack;
-mod unpack;
+pub(crate) mod pack;
+pub(crate) mod unpack;
+
+#[cfg(feature = "serde")]
+pub mod serde;
 
 pub use error::Error;
 use format::Format;

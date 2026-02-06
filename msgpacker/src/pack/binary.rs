@@ -1,26 +1,30 @@
 use super::{Format, Packable};
 use core::iter;
 
+pub fn pack_bytes_slice_len<T: Extend<u8>>(buf: &mut T, slice: &[u8]) -> usize {
+    if slice.len() <= u8::MAX as usize {
+        buf.extend(iter::once(Format::BIN8).chain(iter::once(slice.len() as u8)));
+        2
+    } else if slice.len() <= u16::MAX as usize {
+        buf.extend(iter::once(Format::BIN16).chain((slice.len() as u16).to_be_bytes()));
+        3
+    } else if slice.len() <= u32::MAX as usize {
+        buf.extend(iter::once(Format::BIN32).chain((slice.len() as u32).to_be_bytes()));
+        5
+    } else {
+        #[cfg(feature = "strict")]
+        panic!("strict serialization enabled; the buffer is too large");
+        return 0;
+    }
+}
+
 impl Packable for [u8] {
     #[allow(unreachable_code)]
     fn pack<T>(&self, buf: &mut T) -> usize
     where
         T: Extend<u8>,
     {
-        let n = if self.len() <= u8::MAX as usize {
-            buf.extend(iter::once(Format::BIN8).chain(iter::once(self.len() as u8)));
-            2
-        } else if self.len() <= u16::MAX as usize {
-            buf.extend(iter::once(Format::BIN16).chain((self.len() as u16).to_be_bytes()));
-            3
-        } else if self.len() <= u32::MAX as usize {
-            buf.extend(iter::once(Format::BIN32).chain((self.len() as u32).to_be_bytes()));
-            5
-        } else {
-            #[cfg(feature = "strict")]
-            panic!("strict serialization enabled; the buffer is too large");
-            return 0;
-        };
+        let n = pack_bytes_slice_len(buf, self);
         buf.extend(self.iter().copied());
         n + self.len()
     }

@@ -2,20 +2,22 @@ use super::{Format, Packable};
 use core::{iter, marker::PhantomData};
 
 impl Packable for () {
-    fn pack<T>(&self, _buf: &mut T) -> usize
+    fn pack<T>(&self, buf: &mut T) -> usize
     where
         T: Extend<u8>,
     {
-        0
+        buf.extend(iter::once(Format::NIL));
+        1
     }
 }
 
 impl<X> Packable for PhantomData<X> {
-    fn pack<T>(&self, _buf: &mut T) -> usize
+    fn pack<T>(&self, buf: &mut T) -> usize
     where
         T: Extend<u8>,
     {
-        0
+        buf.extend(iter::once(Format::NIL));
+        1
     }
 }
 
@@ -30,6 +32,15 @@ impl Packable for bool {
             buf.extend(iter::once(Format::FALSE));
         }
         1
+    }
+}
+
+impl Packable for char {
+    fn pack<T>(&self, buf: &mut T) -> usize
+    where
+        T: Extend<u8>,
+    {
+        (*self as u32).pack(buf)
     }
 }
 
