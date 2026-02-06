@@ -11,7 +11,7 @@ readme = "README.md"
 description = "MessagePack protocol implementation for Rust."
 
 [dependencies]
-msgpacker-derive = { path = "../msgpacker-derive", optional = true }
+msgpacker-derive = { version = "0.5", path = "../msgpacker-derive", optional = true }
 serde = { version = "1.0", default-features = false, optional = true }
 
 [dev-dependencies]
