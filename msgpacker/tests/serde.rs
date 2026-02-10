@@ -6,7 +6,7 @@ use msgpacker::Packable;
 use msgpacker_derive::MsgPacker;
 use proptest::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Number, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, MsgPacker)]
 pub struct Bar {
@@ -170,6 +170,19 @@ fn serde_works_enum_struct() {
         a: vec![1, 2, 3],
         b: 42,
     });
+}
+
+#[test]
+fn serde_non_uniform_deserialization_to_json() {
+    let bytes = vec![146u8, 0, 203, 66, 120, 167, 66, 234, 244, 144, 0];
+    let value: Value = msgpacker::serde::from_slice(&bytes).unwrap();
+    let value = value.as_array().cloned().unwrap();
+
+    assert_eq!(value[0].as_number().unwrap(), &Number::from(0u64));
+    assert_eq!(
+        value[1].as_number().unwrap(),
+        &Number::from_f64(1694166331209.0).unwrap()
+    );
 }
 
 proptest! {
